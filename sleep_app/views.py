@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-import pandas as pd
 
 from django.shortcuts import render
 
@@ -20,73 +19,12 @@ DEFAULT_INPUT = {
     "wake_time": "06:30",
 }
 
-EXPECTED_UPLOAD_FIELDS = tuple(DEFAULT_INPUT.keys())
-
-UPLOAD_COLUMN_ALIASES = {
-    "username": "user_name",
-    "user_name": "user_name",
-    "sleephours": "sleep_hours",
-    "sleep_hours": "sleep_hours",
-    "deepsleepminutes": "deep_sleep_minutes",
-    "deep_sleep_minutes": "deep_sleep_minutes",
-    "remsleepminutes": "rem_sleep_minutes",
-    "rem_sleep_minutes": "rem_sleep_minutes",
-    "awakenings": "awakenings",
-    "spo2dropevents": "spo2_drop_events",
-    "spo2_drop_events": "spo2_drop_events",
-    "spo2events": "spo2_drop_events",
-    "hrv": "hrv",
-    "rhr": "rhr",
-    "consecutivedays": "consecutive_days",
-    "consecutive_days": "consecutive_days",
-    "targetsleephours": "target_sleep_hours",
-    "target_sleep_hours": "target_sleep_hours",
-    "waketime": "wake_time",
-    "wake_time": "wake_time",
-}
-
 
 def upload_view(request):
     context = {
-        "data_preview": None,
-        "default_input": DEFAULT_INPUT.copy(),
-        "expected_columns": EXPECTED_UPLOAD_FIELDS,
+        "default_input": DEFAULT_INPUT,
         "feature_groups": _build_feature_groups(),
-        "upload_error": None,
-        "upload_meta": None,
-        "upload_missing_columns": [],
-        "uploaded_input": None,
     }
-
-    if request.method == "POST":
-        uploaded_file = request.FILES.get("sleep_data_file")
-        if not uploaded_file:
-            context["upload_error"] = "Chưa chọn file CSV để tải lên."
-            return render(request, "upload.html", context)
-
-        try:
-            df = pd.read_csv(uploaded_file)
-            if df.empty:
-                raise ValueError("File CSV không có dòng dữ liệu nào.")
-        except Exception as exc:
-            context["upload_error"] = f"Có lỗi khi đọc file: {exc}"
-            return render(request, "upload.html", context)
-
-        uploaded_input, missing_columns = _extract_inputs_from_dataframe(df)
-        context.update(
-            {
-                "data_preview": df.head().to_html(index=False, classes="data-table", border=0),
-                "default_input": uploaded_input.copy(),
-                "upload_meta": {
-                    "columns": len(df.columns),
-                    "file_name": uploaded_file.name,
-                    "rows": len(df.index),
-                },
-                "upload_missing_columns": missing_columns,
-                "uploaded_input": uploaded_input,
-            }
-        )
-
     return render(request, "upload.html", context)
 
 
@@ -118,66 +56,6 @@ def _extract_inputs(request):
         "target_sleep_hours": _to_float(request.POST.get("target_sleep_hours"), DEFAULT_INPUT["target_sleep_hours"]),
         "wake_time": request.POST.get("wake_time", DEFAULT_INPUT["wake_time"]).strip() or DEFAULT_INPUT["wake_time"],
     }
-
-
-def _extract_inputs_from_dataframe(df):
-    mapped_columns = {}
-    for column in df.columns:
-        matched_field = _match_upload_column(column)
-        if matched_field and matched_field not in mapped_columns:
-            mapped_columns[matched_field] = column
-
-    first_row = df.iloc[0]
-    inputs = DEFAULT_INPUT.copy()
-    missing_columns = []
-
-    for field, fallback in DEFAULT_INPUT.items():
-        source_column = mapped_columns.get(field)
-        if source_column is None:
-            missing_columns.append(field)
-            continue
-
-        raw_value = first_row[source_column]
-        if pd.isna(raw_value):
-            missing_columns.append(field)
-            continue
-
-        inputs[field] = _coerce_uploaded_value(field, raw_value, fallback)
-
-    return inputs, missing_columns
-
-
-def _match_upload_column(column_name):
-    normalized = _normalize_column_name(column_name)
-    return UPLOAD_COLUMN_ALIASES.get(normalized)
-
-
-def _normalize_column_name(value):
-    return "".join(character for character in str(value).strip().lower() if character.isalnum() or character == "_")
-
-
-def _coerce_uploaded_value(field, value, fallback):
-    if field == "wake_time":
-        return _to_time_string(value, fallback)
-    if field == "user_name":
-        return str(value).strip() or fallback
-    if isinstance(fallback, float):
-        return _to_float(value, fallback)
-    return _to_int(value, fallback)
-
-
-def _to_time_string(value, fallback):
-    if hasattr(value, "strftime"):
-        return value.strftime("%H:%M")
-
-    value_text = str(value).strip()
-    for time_format in ("%H:%M", "%H:%M:%S"):
-        try:
-            return datetime.strptime(value_text, time_format).strftime("%H:%M")
-        except ValueError:
-            continue
-
-    return fallback
 
 
 def _analyze_sleep(inputs):
