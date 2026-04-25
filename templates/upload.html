@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+
+{% block title %}Sleep Cycle Intelligence | Nhập dữ liệu{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <div class="hero-grid">
+        <div>
+            <span class="eyebrow">Sleep Analytics Platform</span>
+            <h1>Sleep Cycle Intelligence</h1>
+            <p class="copy-block push-down-lg max-62">
+                Giao diện này gom ba nhóm chức năng vào cùng một luồng: đánh giá chất lượng giấc ngủ,
+                phát hiện rủi ro sức khỏe và dự báo năng lượng ngày mai. Người dùng chỉ cần nhập các chỉ số
+                cơ bản như Deep Sleep, REM, SpO2, HRV và RHR để xem phân tích trực quan.
+            </p>
+
+            <div class="stat-strip">
+                <div class="stat-pill">
+                    <span class="muted-label">Phân loại</span>
+                    <strong>Tốt / Khá / Tệ</strong>
+                    <p>Phù hợp bài toán KNN hoặc Logistic Regression cho phân nhóm tổng quan.</p>
+                </div>
+                <div class="stat-pill">
+                    <span class="muted-label">Cảnh báo</span>
+                    <strong>Apnea & Stress</strong>
+                    <p>Nhấn mạnh giá trị y tế bằng cảnh báo sớm thay vì chỉ hiển thị số liệu thô.</p>
+                </div>
+                <div class="stat-pill">
+                    <span class="muted-label">Khuyến nghị</span>
+                    <strong>Energy & Debt</strong>
+                    <p>Tạo bước tiếp theo cụ thể: giờ ngủ lý tưởng, trạng thái ngày mai, nợ ngủ tích lũy.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <span class="eyebrow">Flow sản phẩm</span>
+            <h3 class="stack-bottom-md">Một dashboard nhưng đủ 6 năng lực phân tích</h3>
+            <ul class="feature-list">
+                <li>Phân loại chất lượng giấc ngủ tổng thể.</li>
+                <li>Tính Recovery Score 0 - 100 theo các pha ngủ và phân mảnh giấc ngủ.</li>
+                <li>Cảnh báo nguy cơ Sleep Apnea từ sự kiện tụt SpO2.</li>
+                <li>Ước lượng stress level bằng HRV và nhịp tim nghỉ.</li>
+                <li>Dự báo năng lượng ngày hôm sau từ REM và Deep Sleep.</li>
+                <li>Tính Sleep Debt nhiều ngày và đề xuất bedtime lý tưởng.</li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<section class="section grid-3">
+    {% for group in feature_groups %}
+    <article class="card">
+        <span class="eyebrow">{{ group.eyebrow }}</span>
+        <h3>{{ group.title }}</h3>
+        <p class="section-intro">{{ group.description }}</p>
+        <ul class="feature-list push-down-md">
+            {% for item in group.items %}
+            <li>{{ item }}</li>
+            {% endfor %}
+        </ul>
+    </article>
+    {% endfor %}
+</section>
+
+<section class="section insight-row">
+    <section class="panel">
+        <span class="eyebrow">Upload CSV</span>
+        <h2>Tải file dữ liệu để điền nhanh vào dashboard</h2>
+        <p class="copy-block section-intro max-60">
+            Hệ thống đọc hàng đầu tiên trong file CSV để điền sẵn biểu mẫu phân tích. Nếu file thiếu cột,
+            các giá trị còn lại sẽ dùng mặc định để bạn vẫn có thể kiểm tra giao diện.
+        </p>
+
+        <form method="post" action="{% url 'upload_page' %}" enctype="multipart/form-data" class="form-with-gap">
+            {% csrf_token %}
+            <label class="span-full">
+                Chọn file CSV
+                <input type="file" name="sleep_data_file" accept=".csv,text/csv" required>
+                <span class="field-note">Cột khuyến nghị: {{ expected_columns|join:", " }}.</span>
+            </label>
+
+            <div class="button-row">
+                <button class="button button-primary" type="submit">Upload và xem trước</button>
+            </div>
+        </form>
+
+        {% if upload_error %}
+        <div class="status-block status-block-risk push-down-lg">
+            <strong>Upload chưa thành công.</strong>
+            <p>{{ upload_error }}</p>
+        </div>
+        {% endif %}
+
+        {% if upload_meta %}
+        <div class="status-block push-down-lg">
+            <strong>Dữ liệu CSV đã sẵn sàng để phân tích.</strong>
+            <p>
+                File `{{ upload_meta.file_name }}` chứa {{ upload_meta.rows }} dòng và {{ upload_meta.columns }} cột.
+                Hệ thống đang dùng dòng đầu tiên để điền form bên dưới.
+            </p>
+        </div>
+        {% endif %}
+
+        {% if upload_missing_columns %}
+        <p class="footer-note">
+            Các cột chưa có trong file nên đang dùng giá trị mặc định:
+            {{ upload_missing_columns|join:", " }}.
+        </p>
+        {% endif %}
+
+        {% if data_preview %}
+        <div class="table-wrap push-down-lg">
+            {{ data_preview|safe }}
+        </div>
+        {% endif %}
+
+        {% if uploaded_input %}
+        <form method="post" action="{% url 'dashboard_page' %}" class="inline-form push-down-lg">
+            {% csrf_token %}
+            {% for key, value in uploaded_input.items %}
+            <input type="hidden" name="{{ key }}" value="{{ value }}">
+            {% endfor %}
+            <div class="button-row">
+                <button class="button button-secondary" type="submit">Phân tích dòng đầu tiên từ CSV</button>
+            </div>
+        </form>
+        {% endif %}
+    </section>
+
+    <aside class="panel">
+        <span class="eyebrow">Thiết kế dashboard</span>
+        <h3 class="stack-bottom-md">Cách giao diện sẽ hiển thị kết quả</h3>
+        <div class="grid-2">
+            <div class="metric">
+                <div class="metric-head">
+                    <div>
+                        <span class="muted-label">Top summary</span>
+                        <div class="card-value">Recovery</div>
+                    </div>
+                    <span class="tone-pill good">Score ring</span>
+                </div>
+              </div>
+            <div class="metric">
+                <div class="metric-head">
+                    <div>
+                        <span class="muted-label">Risk block</span>
+                        <div class="card-value">Apnea / Stress</div>
+                    </div>
+                    <span class="tone-pill risk">Cảnh báo</span>
+
+                </div>
+               </div>
+            <div class="metric">
+                <div class="metric-head">
+                    <div>
+                        <span class="muted-label">Forecast</span>
+                        <div class="card-value">Energy</div>
+                    </div>
+                    <span class="tone-pill moderate">Ngày mai</span>
+                </div>
+            </div>
+            <div class="metric">
+                <div class="metric-head">
+                    <div>
+                        <span class="muted-label">De xuat</span>
+                        <div class="card-value">Sleep Debt</div>
+                    </div>
+                    <span class="tone-pill moderate">Actionable</span>
+                </div>
+                <p>Tổng nợ ngủ và đề xuất giờ đi ngủ lý tưởng để người dùng có hành động rõ ràng.</p>
+            </div>
+        </div>
+    </aside>
+</section>
+
+<section class="section insight-row">
+    <section class="panel">
+        <span class="eyebrow">Nhập tín hiệu</span>
+        <h2>Dữ liệu đầu vào cho phiên phân tích</h2>
+        <form method="post" action="{% url 'dashboard_page' %}" class="form-with-gap">
+            {% csrf_token %}
+            <div class="form-grid">
+                <label>
+                    Tên người dùng
+                    <input type="text" name="user_name" value="{{ default_input.user_name }}" placeholder="Nguyen An">
+                    <span class="field-note"> Cá nhân hóa phần summary trên dashboard.</span>
+                </label>
+                <label>
+                    Giờ thức dậy
+                    <input type="time" name="wake_time" value="{{ default_input.wake_time }}">
+                    <span class="field-note">Mốc để tính bedtime lý tưởng.</span>
+                </label>
+                <label>
+                    Tổng thời gian ngủ (giờ)
+                    <input type="number" step="0.1" min="0" name="sleep_hours" value="{{ default_input.sleep_hours }}">
+                    <span class="field-note">Tổng số giờ ngủ trong đêm gần nhất.</span>
+                </label>
+                <label>
+                    Mục tiêu ngủ sinh học (giờ)
+                    <input type="number" step="0.1" min="0" name="target_sleep_hours" value="{{ default_input.target_sleep_hours }}">
+                    <span class="field-note">Mốc chuẩn để tính thiếu hụt và sleep debt.</span>
+                </label>
+                <label>
+                    Deep Sleep (phút)
+                    <input type="number" min="0" name="deep_sleep_minutes" value="{{ default_input.deep_sleep_minutes }}">
+                    <span class="field-note">Giảm mạnh sẽ kéo Recovery Score xuống.</span>
+                </label>
+                <label>
+                    REM Sleep (phút)
+                    <input type="number" min="0" name="rem_sleep_minutes" value="{{ default_input.rem_sleep_minutes }}">
+                    <span class="field-note">Ảnh hưởng trực tiếp tới dự báo năng lượng và tỉnh táo.</span>
+                </label>
+                <label>
+                    Số lần thức giấc
+                    <input type="number" min="0" name="awakenings" value="{{ default_input.awakenings }}">
+                    <span class="field-note">Cho biết mức độ phân mảnh giấc ngủ.</span>
+                </label>
+                <label>
+                    Sự kiện giảm SpO2
+                    <input type="number" min="0" name="spo2_drop_events" value="{{ default_input.spo2_drop_events }}">
+                    <span class="field-note">Tín hiệu đầu vào quan trọng để cảnh báo Sleep Apnea.</span>
+                </label>
+                <label>
+                    HRV trung bình (ms)
+                    <input type="number" min="0" name="hrv" value="{{ default_input.hrv }}">
+                    <span class="field-note">HRV thấp thường đi kèm stress hoặc phục hồi kém.</span>
+                </label>
+                <label>
+                    RHR khi ngủ (bpm)
+                    <input type="number" min="0" name="rhr" value="{{ default_input.rhr }}">
+                    <span class="field-note">RHR tăng có thể phản ánh tải stress hoặc hồi phục kém.</span>
+                </label>
+                <label class="span-full">
+                    Số ngày thiếu ngủ liên tiếp
+                    <input type="number" min="1" name="consecutive_days" value="{{ default_input.consecutive_days }}">
+                    <span class="field-note">Tích lũy thay vì chỉ đánh giá một đêm đơn lẻ.</span>
+                </label>
+            </div>
+
+            <div class="button-row">
+                <button class="button button-primary" type="submit">Phân tích ngay</button>
+                <a class="button button-secondary" href="{% url 'dashboard_page' %}">Xem dashboard mẫu</a>
+            </div>
+        </form>
+    </section>
+</section>
+{% endblock %}
