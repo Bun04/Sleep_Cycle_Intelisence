@@ -1,103 +1,104 @@
 {% extends "base.html" %}
 
-{% block title %}Sleep Cycle Intelligence | Nhập dữ liệu{% endblock %}
+{% block title %}Sleep Cycle Intelligence | Nhập Dữ Liệu{% endblock %}
 
 {% block content %}
 <section class="hero">
-    <div class="hero-grid">
-        <div>
-            <span class="eyebrow">Sleep Analytics Platform</span>
-            <h1>Sleep Cycle Intelligence</h1>
-            <p class="copy-block push-down-lg max-62">
-                Giao diện này gom ba nhóm chức năng vào cùng một luồng: đánh giá chất lượng giấc ngủ,
-                phát hiện rủi ro sức khỏe và dự báo năng lượng ngày mai. Người dùng chỉ cần nhập các chỉ số
-                cơ bản như Deep Sleep, REM, SpO2, HRV và RHR để xem phân tích trực quan.
-            </p>
-
-            <div class="stat-strip">
-                <div class="stat-pill">
-                    <span class="muted-label">Phân loại</span>
-                    <strong>Tốt / Khá / Tệ</strong>
-                    <p>Phù hợp bài toán KNN hoặc Logistic Regression cho phân nhóm tổng quan.</p>
-                </div>
-                <div class="stat-pill">
-                    <span class="muted-label">Cảnh báo</span>
-                    <strong>Apnea & Stress</strong>
-                    <p>Nhấn mạnh giá trị y tế bằng cảnh báo sớm thay vì chỉ hiển thị số liệu thô.</p>
-                </div>
-                <div class="stat-pill">
-                    <span class="muted-label">Khuyến nghị</span>
-                    <strong>Energy & Debt</strong>
-                    <p>Tạo bước tiếp theo cụ thể: giờ ngủ lý tưởng, trạng thái ngày mai, nợ ngủ tích lũy.</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="panel">
-            <span class="eyebrow">Flow sản phẩm</span>
-            <h3 class="stack-bottom-md">Một dashboard nhưng đủ 6 năng lực phân tích</h3>
-            <ul class="feature-list">
-                <li>Phân loại chất lượng giấc ngủ tổng thể.</li>
-                <li>Tính Recovery Score 0 - 100 theo các pha ngủ và phân mảnh giấc ngủ.</li>
-                <li>Cảnh báo nguy cơ Sleep Apnea từ sự kiện tụt SpO2.</li>
-                <li>Ước lượng stress level bằng HRV và nhịp tim nghỉ.</li>
-                <li>Dự báo năng lượng ngày hôm sau từ REM và Deep Sleep.</li>
-                <li>Tính Sleep Debt nhiều ngày và đề xuất bedtime lý tưởng.</li>
-            </ul>
-        </div>
+    <div class="hero-content">
+        <span class="eyebrow">Bắt Đầu Phân Tích</span>
+        <h1>Tải lên dữ liệu giấc ngủ của bạn</h1>
+        <p class="copy-block push-down-md max-70">
+            Tải file CSV chứa các chỉ số giấc ngủ từ thiết bị đeo (Apple Watch, Fitbit, Garmin...). 
+            Chúng tôi sẽ phân tích ngay lập tức và đưa ra báo cáo chi tiết.
+        </p>
     </div>
 </section>
 
-<section class="section grid-3">
-    {% for group in feature_groups %}
-    <article class="card">
-        <span class="eyebrow">{{ group.eyebrow }}</span>
-        <h3>{{ group.title }}</h3>
-        <p class="section-intro">{{ group.description }}</p>
-        <ul class="feature-list push-down-md">
-            {% for item in group.items %}
-            <li>{{ item }}</li>
-            {% endfor %}
-        </ul>
-    </article>
-    {% endfor %}
+<section class="section upload-section">
+    <div class="grid-3">
+        <article class="info-card">
+            <h3 class="card-title">📊 Đánh Giá & Phân Loại</h3>
+            <p>Phân loại chất lượng giấc ngủ (Tốt, Khá, Tệ) và tính Recovery Score từ 0-100.</p>
+        </article>
+        
+        <article class="info-card">
+            <h3 class="card-title">⚠️ Cảnh Báo Sức Khỏe</h3>
+            <p>Phát hiện rủi ro Sleep Apnea và đánh giá mức độ căng thẳng từ dữ liệu sinh lý.</p>
+        </article>
+        
+        <article class="info-card">
+            <h3 class="card-title">💡 Dự Báo & Khuyến Nghị</h3>
+            <p>Dự báo năng lượng ngày mai và tính toán khoản "nợ ngủ" tích lũy.</p>
+        </article>
+    </div>
 </section>
 
-<section class="section insight-row">
-    <section class="panel">
-        <span class="eyebrow">Upload CSV</span>
-        <h2>Tải file dữ liệu để điền nhanh vào dashboard</h2>
-        <p class="copy-block section-intro max-60">
-            Hệ thống đọc hàng đầu tiên trong file CSV để điền sẵn biểu mẫu phân tích. Nếu file thiếu cột,
-            các giá trị còn lại sẽ dùng mặc định để bạn vẫn có thể kiểm tra giao diện.
-        </p>
+<section class="section form-section">
+    <div class="form-container">
+        <div class="form-header">
+            <h2>Tải File CSV</h2>
+            <p class="form-description">
+                Các cột dự kiến: Sleep Hours, Deep Sleep %, REM Sleep %, SpO2, HRV, RHR, Awakenings, Wake Time
+            </p>
+        </div>
 
-        <form method="post" action="{% url 'upload_page' %}" enctype="multipart/form-data" class="form-with-gap">
+        <form method="post" action="{% url 'upload_page' %}" enctype="multipart/form-data" class="upload-form">
             {% csrf_token %}
-            <label class="span-full">
-                Chọn file CSV
-                <input type="file" name="sleep_data_file" accept=".csv,text/csv" required>
-                <span class="field-note">Cột khuyến nghị: {{ expected_columns|join:", " }}.</span>
-            </label>
-
-            <div class="button-row">
-                <button class="button button-primary" type="submit">Upload và xem trước</button>
+            
+            <div class="form-group">
+                <label for="csv-file" class="file-label">
+                    <input type="file" id="csv-file" name="sleep_data_file" accept=".csv,text/csv" required>
+                    <span class="file-input-text">Chọn file CSV hoặc kéo thả vào đây</span>
+                </label>
             </div>
+
+            <button type="submit" class="button button-primary">Tải Lên & Phân Tích</button>
         </form>
 
         {% if upload_error %}
-        <div class="status-block status-block-risk push-down-lg">
-            <strong>Upload chưa thành công.</strong>
-            <p>{{ upload_error }}</p>
+        <div class="status-block error-block push-up-md">
+            <span class="status-icon">❌</span>
+            <div>
+                <strong>Upload chưa thành công</strong>
+                <p>{{ upload_error }}</p>
+            </div>
         </div>
         {% endif %}
 
         {% if upload_meta %}
-        <div class="status-block push-down-lg">
-            <strong>Dữ liệu CSV đã sẵn sàng để phân tích.</strong>
-            <p>
-                File `{{ upload_meta.file_name }}` chứa {{ upload_meta.rows }} dòng và {{ upload_meta.columns }} cột.
-                Hệ thống đang dùng dòng đầu tiên để điền form bên dưới.
+        <div class="status-block success-block push-up-md">
+            <span class="status-icon">✅</span>
+            <div>
+                <strong>Dữ liệu sẵn sàng phân tích</strong>
+                <p>File `{{ upload_meta.file_name }}` có {{ upload_meta.rows }} dòng, {{ upload_meta.columns }} cột.</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<section class="section faq-section">
+    <h2>Thường Gặp</h2>
+    <div class="grid-2">
+        <article class="faq-card">
+            <h4>🎯 File CSV cần như thế nào?</h4>
+            <p>File phải có header row và chứa ít nhất các cột chỉ số: Sleep Hours, Deep Sleep %, REM Sleep %, SpO2, HRV, RHR, Awakenings.</p>
+        </article>
+        <article class="faq-card">
+            <h4>📈 Kết quả phân tích bao gồm gì?</h4>
+            <p>Bạn sẽ nhận được: Phân loại chất lượng, Recovery Score, cảnh báo rủi ro, mức stress, dự báo năng lượng, và khuyến nghị tuyên cá nhân hóa.</p>
+        </article>
+        <article class="faq-card">
+            <h4>🔒 Dữ liệu có được lưu không?</h4>
+            <p>Dữ liệu chỉ được xử lý tạm thời để phân tích. Bạn có thể tải xuống kết quả hoặc upload file mới để phân tích lại.</p>
+        </article>
+        <article class="faq-card">
+            <h4>⚙️ Những chỉ số nào là quan trọng nhất?</h4>
+            <p>Deep Sleep %, REM %, SpO2, HRV, và tổng Sleep Hours là những yếu tố chính ảnh hưởng đến Recovery Score.</p>
+        </article>
+    </div>
+</section>
+{% endblock %}
             </p>
         </div>
         {% endif %}
