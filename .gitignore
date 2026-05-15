@@ -1,0 +1,56 @@
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Django local data
+*.sqlite3
+*.sqlite3-journal
+media/
+
+# Static files
+staticfiles/
+
+# Environment variables
+.env
+
+# Python packaging
+*.egg-info/
+.eggs/
+*.egg
+pip-log.txt
+
+# IDEs / editors
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Testing / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Build files
+build/
+dist/
+
+# OS files
+.DS_Store
+*.swp
+*~
+
+# Logs
+*.log

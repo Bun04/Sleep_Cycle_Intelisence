@@ -11,17 +11,21 @@
     <div class="shell">
         <header class="topbar">
             <a class="brand" href="{% url 'upload_page' %}">
-                <span class="brand-mark">SC</span>
-                <span>Sleep Cycle Intelligence</span>
+                <span class="brand-mark">⏾</span>
+                <span class="brand-text">Sleep Cycle Intelligence</span>
             </a>
             <nav class="nav">
-                <a href="{% url 'upload_page' %}">Nhập dữ liệ</a>
+                <a href="{% url 'upload_page' %}" class="nav-link">Phân Tích Mới</a>
             </nav>
         </header>
 
         <main class="page">
             {% block content %}{% endblock %}
         </main>
+
+        <footer class="footer">
+            <p>&copy; 2026 Sleep Cycle Intelligence. Công cụ phân tích giấc ngủ cá nhân hóa.</p>
+        </footer>
     </div>
 
     <script src="{% static 'js/app.js' %}" defer></script>

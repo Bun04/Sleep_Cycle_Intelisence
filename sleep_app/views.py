@@ -1,8 +1,13 @@
 from datetime import datetime, timedelta
+import csv
+import io
 
-from django.shortcuts import render
+from django.shortcuts import render, redirect
+from django.http import JsonResponse
+from django.contrib import messages
 
 from core_ml.sleep_dept_logic import predict_sleep_cycles
+from .models import SleepRecord, CSVUploadHistory
 
 
 DEFAULT_INPUT = {
@@ -17,20 +22,120 @@ DEFAULT_INPUT = {
     "consecutive_days": 5,
     "target_sleep_hours": 8.0,
     "wake_time": "06:30",
+    "spo2_min": 89,  # 95 - 3*2
 }
 
 
 def upload_view(request):
+    """Xử lý cả file upload và form input"""
     context = {
         "default_input": DEFAULT_INPUT,
         "feature_groups": _build_feature_groups(),
     }
+    
+    # Xử lý upload file CSV
+    if request.method == "POST" and "sleep_data_file" in request.FILES:
+        try:
+            csv_file = request.FILES["sleep_data_file"]
+            
+            # Kiểm tra loại file
+            if not csv_file.name.endswith('.csv'):
+                context["upload_error"] = "Vui lòng tải file CSV hợp lệ."
+                return render(request, "upload.html", context)
+            
+            # Xử lý CSV
+            stream = io.TextIOWrapper(csv_file.file, encoding='utf-8-sig')
+            csv_reader = csv.DictReader(stream)
+            
+            if not csv_reader.fieldnames:
+                context["upload_error"] = "File CSV không có header row."
+                return render(request, "upload.html", context)
+            
+            rows = list(csv_reader)
+            if not rows:
+                context["upload_error"] = "File CSV không có dữ liệu."
+                return render(request, "upload.html", context)
+            
+            # Lưu lịch sử upload
+            upload_history = CSVUploadHistory.objects.create(
+                file_name=csv_file.name,
+                rows_count=len(rows),
+                columns_count=len(csv_reader.fieldnames),
+                upload_status='processing'
+            )
+            
+            # Trích xuất dữ liệu từ dòng đầu tiên
+            first_row = rows[0]
+            extracted_input = _extract_csv_row(first_row)
+            
+            # Lưu dữ liệu vào database
+            sleep_record = SleepRecord.objects.create(
+                user_name=extracted_input.get('user_name', 'CSV Upload'),
+                sleep_hours=extracted_input.get('sleep_hours', 7.0),
+                deep_sleep_minutes=extracted_input.get('deep_sleep_minutes', 90),
+                rem_sleep_minutes=extracted_input.get('rem_sleep_minutes', 100),
+                awakenings=extracted_input.get('awakenings', 2),
+                spo2_drop_events=extracted_input.get('spo2_drop_events', 0),
+                hrv=extracted_input.get('hrv', 50),
+                rhr=extracted_input.get('rhr', 60),
+                consecutive_days=extracted_input.get('consecutive_days', 1),
+                target_sleep_hours=extracted_input.get('target_sleep_hours', 8.0),
+            )
+            
+            upload_history.processed_rows = len(rows)
+            upload_history.upload_status = 'completed'
+            upload_history.save()
+            
+            # Xây dựng preview dữ liệu
+            context["upload_meta"] = {
+                "file_name": csv_file.name,
+                "rows": len(rows),
+                "columns": len(csv_reader.fieldnames)
+            }
+            context["data_preview"] = _build_csv_preview(rows[:5])
+            context["uploaded_input"] = extracted_input
+            context["missing_columns"] = _get_missing_columns(first_row)
+            
+        except Exception as e:
+            context["upload_error"] = f"Lỗi xử lý file: {str(e)}"
+            upload_history.upload_status = 'failed'
+            upload_history.error_message = str(e)
+            upload_history.save()
+    
     return render(request, "upload.html", context)
 
 
 def dashboard_view(request):
     inputs = _extract_inputs(request)
+    
+    # Tự động chọn thuật toán dựa trên dữ liệu
+    selected_algorithm = _select_algorithm(inputs)
+    
     analysis = _analyze_sleep(inputs)
+    analysis['algorithm_used'] = selected_algorithm
+    
+    # Lưu kết quả vào database nếu là request POST
+    if request.method == "POST":
+        try:
+            sleep_record = SleepRecord.objects.create(
+                user_name=inputs.get('user_name', 'User'),
+                sleep_hours=inputs.get('sleep_hours'),
+                deep_sleep_minutes=inputs.get('deep_sleep_minutes'),
+                rem_sleep_minutes=inputs.get('rem_sleep_minutes'),
+                awakenings=inputs.get('awakenings'),
+                spo2_drop_events=inputs.get('spo2_drop_events'),
+                hrv=inputs.get('hrv'),
+                rhr=inputs.get('rhr'),
+                consecutive_days=inputs.get('consecutive_days', 1),
+                target_sleep_hours=inputs.get('target_sleep_hours'),
+                quality_label=analysis.get('quality_label'),
+                quality_tone=analysis.get('quality_tone'),
+                recovery_score=analysis.get('recovery_score'),
+                algorithm_used=selected_algorithm
+            )
+        except Exception as e:
+            print(f"Error saving sleep record: {e}")
+    
     context = {
         "inputs": inputs,
         "analysis": analysis,
@@ -43,7 +148,7 @@ def _extract_inputs(request):
     if request.method != "POST":
         return DEFAULT_INPUT.copy()
 
-    return {
+    inputs = {
         "user_name": request.POST.get("user_name", DEFAULT_INPUT["user_name"]).strip() or DEFAULT_INPUT["user_name"],
         "sleep_hours": _to_float(request.POST.get("sleep_hours"), DEFAULT_INPUT["sleep_hours"]),
         "deep_sleep_minutes": _to_int(request.POST.get("deep_sleep_minutes"), DEFAULT_INPUT["deep_sleep_minutes"]),
@@ -56,6 +161,11 @@ def _extract_inputs(request):
         "target_sleep_hours": _to_float(request.POST.get("target_sleep_hours"), DEFAULT_INPUT["target_sleep_hours"]),
         "wake_time": request.POST.get("wake_time", DEFAULT_INPUT["wake_time"]).strip() or DEFAULT_INPUT["wake_time"],
     }
+    
+    # Add computed spo2_min field for dashboard display
+    inputs["spo2_min"] = 95 - inputs["spo2_drop_events"] * 2
+    
+    return inputs
 
 
 def _analyze_sleep(inputs):
@@ -401,6 +511,16 @@ def _calculate_bedtime(wake_time, target_sleep_hours, sleep_debt_hours):
     return bedtime.strftime("%H:%M")
 
 
+def _calculate_optimal_wake(bedtime, sleep_hours):
+    try:
+        bed_dt = datetime.strptime(bedtime, "%H:%M")
+    except ValueError:
+        bed_dt = datetime.strptime("22:30", "%H:%M")  # Default bedtime
+
+    wake_time = bed_dt + timedelta(hours=sleep_hours)
+    return wake_time.strftime("%H:%M")
+
+
 def _to_float(value, fallback):
     try:
         return float(value)
@@ -417,3 +537,111 @@ def _to_int(value, fallback):
 
 def _clamp(value, min_value, max_value):
     return max(min_value, min(max_value, value))
+
+
+# ============= CSV Processing Functions =============
+
+def _extract_csv_row(row):
+    """
+    Trích xuất dữ liệu từ một dòng CSV
+    Hỗ trợ các tên cột linh hoạt (tên tiếng Anh hoặc Việt)
+    """
+    # Mapping các tên cột có thể có
+    column_mappings = {
+        'sleep_hours': ['sleep hours', 'hours', 'thời gian ngủ', 'tổng giờ ngủ'],
+        'deep_sleep_minutes': ['deep sleep', 'deep', 'n3', 'deep sleep minutes', 'phút ngủ sâu'],
+        'rem_sleep_minutes': ['rem sleep', 'rem', 'rem sleep minutes', 'phút rem'],
+        'awakenings': ['awakenings', 'awakenings count', 'lần thức giấc'],
+        'spo2_drop_events': ['spo2 drop', 'spo2 events', 'spo2 drop events', 'sự kiện spo2'],
+        'hrv': ['hrv', 'heart rate variability'],
+        'rhr': ['rhr', 'resting heart rate', 'nhịp tim'],
+    }
+    
+    # Chuyển tất cả keys thành lowercase để so sánh
+    row_lower = {k.lower().strip(): v for k, v in row.items()}
+    
+    extracted = DEFAULT_INPUT.copy()
+    
+    for field, aliases in column_mappings.items():
+        for alias in aliases:
+            if alias.lower() in row_lower:
+                try:
+                    value = row_lower[alias.lower()]
+                    if field in ['sleep_hours', 'target_sleep_hours']:
+                        extracted[field] = _to_float(value, DEFAULT_INPUT[field])
+                    else:
+                        extracted[field] = _to_int(value, DEFAULT_INPUT[field])
+                except:
+                    pass
+    
+    # Calculate spo2_min
+    extracted["spo2_min"] = max(75, 95 - extracted["spo2_drop_events"] * 2)
+    
+    return extracted
+
+
+def _get_missing_columns(row):
+    """Tìm các cột bắt buộc bị thiếu"""
+    required_columns = ['sleep hours', 'deep sleep', 'rem sleep', 'awakenings']
+    row_keys = [k.lower().strip() for k in row.keys()]
+    
+    missing = []
+    for col in required_columns:
+        if not any(col in key or key in col for key in row_keys):
+            missing.append(col)
+    
+    return missing
+
+
+def _build_csv_preview(rows):
+    """Tạo HTML preview table cho CSV data"""
+    if not rows:
+        return ""
+    
+    html = "<table class='csv-preview-table'>"
+    html += "<thead><tr>"
+    
+    # Headers
+    for key in rows[0].keys():
+        html += f"<th>{key}</th>"
+    html += "</tr></thead>"
+    
+    html += "<tbody>"
+    for row in rows[:5]:
+        html += "<tr>"
+        for value in row.values():
+            html += f"<td>{value}</td>"
+        html += "</tr>"
+    html += "</tbody>"
+    html += "</table>"
+    
+    return html
+
+
+def _select_algorithm(inputs):
+    """
+    Tự động chọn thuật toán phù hợp dựa trên đặc điểm dataset
+    
+    Logic chọn:
+    - Recovery Score cao & consistent: Linear Regression
+    - Dữ liệu phức tạp (stress cao, apnea risk): Random Forest
+    - Dataset nhỏ hoặc cần classification: KNN/Logistic Regression
+    """
+    recovery_score = inputs['recovery_score'] if 'recovery_score' in inputs else 0
+    stress_level = (65 - inputs['hrv']) * 1.2 + max(0, inputs['rhr'] - 60) * 2.1
+    apnea_risk = inputs['spo2_drop_events'] * 14 + inputs['awakenings'] * 6
+    
+    # Tính điểm complexity
+    complexity = stress_level * 0.4 + (apnea_risk / 100) * 0.4 + (abs(inputs['sleep_hours'] - inputs['target_sleep_hours']) * 10) * 0.2
+    
+    # Chọn thuật toán
+    if complexity < 20:
+        algorithm = "Linear Regression"
+    elif complexity < 50:
+        algorithm = "Logistic Regression"
+    elif apnea_risk > 50 or stress_level > 70:
+        algorithm = "Random Forest"
+    else:
+        algorithm = "KNN"
+    
+    return algorithm

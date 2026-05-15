@@ -201,94 +201,159 @@ def evaluate_regression(actual, predicted):
     }
 
 
-def train_and_save():
-    print("="*60)
-    print("BẮT ĐẦU QUÁ TRÌNH HUẤN LUYỆN MÔ HÌNH AI CHO DỰ ĐOÁN GIẤC NGỦ VÀ BỆNH LÝ LIÊN QUAN")
-    print("="*60)
-    
-    # Tải dữ liệu
-    print("[1/3] Đang tải và xử lý dữ liệu gốc từ CSV...")
-    try:
-        dataset, occ_map, bmi_map = load_and_process_csv('Sleep_health_and_lifestyle_dataset.csv')
-    except FileNotFoundError:
-        print("LỖI: Không tìm thấy file 'Sleep_health_and_lifestyle_dataset.csv'!")
-        return
-    
-    # Các đặc trưng
-    features_disorder = ['Age', 'Occ_Num', 'BMI_Num', 'Systolic', 'Diastolic', 'Stress Level']
-    features_quality = ['Physical Activity Level', 'Stress Level']
-    
-    #  Huấn luyện mô hình
-    print(f"[2/3] Đang huấn luyện Rừng ngẫu nhiên (Vui lòng đợi vài giây)...")
-    
-    # Chia dữ liệu train/test để đánh giá mô hình
-    train_set, test_set = train_test_split(dataset, test_ratio=0.2, seed=42)
-    print(f"[2/3] Dữ liệu huấn luyện: {len(train_set)} hàng, dữ liệu kiểm tra: {len(test_set)} hàng")
-    
-    # Mô hình 1: Dự đoán phân loại Bệnh lý (Classification)
-    rf_disorder = random_forest(
-        train=train_set, 
-        max_depth=4, 
-        min_size=2, 
-        sample_size=0.8, 
-        n_trees=5, 
-        features=features_disorder, 
-        target_col='Sleep Disorder', 
-        mode='classification'
-    )
-    
-    # Mô hình Dự đoán điểm số Chất lượng giấ ngủ (Regression)
-    rf_quality = random_forest(
-        train=train_set, 
-        max_depth=4, 
-        min_size=2, 
-        sample_size=0.8, 
-        n_trees=5, 
-        features=features_quality, 
-        target_col='Quality of Sleep', 
-        mode='regression'
-    )
 
-    # Đánh giá trên tập kiểm tra
-    disorder_actual = [row['Sleep Disorder'] for row in test_set]
-    disorder_predicted = [predict_rf(rf_disorder, row, mode='classification') for row in test_set]
-    disorder_metrics = evaluate_classification(disorder_actual, disorder_predicted)
+# =========================================================
+# RANDOM FOREST SYSTEM
+# =========================================================
+class SleepCycleSystem:
+    def __init__(self):
+        self.occ_map = {}
+        self.bmi_map = {}
+        self.rf_disorder = None
+        self.rf_quality = None
+        self.max_depth = 4
+        self.min_size = 2
+        self.sample_size = 0.8
+        self.n_trees = 5
 
-    quality_actual = [row['Quality of Sleep'] for row in test_set]
-    quality_predicted = [predict_rf(rf_quality, row, mode='regression') for row in test_set]
-    quality_metrics = evaluate_regression(quality_actual, quality_predicted)
+    def _load_csv_data(self, filepath):
+        return load_and_process_csv(filepath)
 
-    print("[3/3] KẾT QUẢ ĐÁNH GIÁ MÔ HÌNH TRÊN TẬP KIỂM TRA")
-    print("-" * 60)
-    print("Phân loại Sleep Disorder:")
-    print(f"  Accuracy: {disorder_metrics['accuracy']:.4f}")
-    print(f"  Precision (macro): {disorder_metrics['avg_precision']:.4f}")
-    print(f"  Recall (macro): {disorder_metrics['avg_recall']:.4f}")
-    for label in sorted(disorder_metrics['precision_by_label'].keys()):
-        print(f"    {label}: Precision={disorder_metrics['precision_by_label'][label]:.4f}, Recall={disorder_metrics['recall_by_label'][label]:.4f}")
-    print("-" * 60)
-    print("Hồi quy Quality of Sleep:")
-    print(f"  MAE: {quality_metrics['mae']:.4f}")
-    print(f"  RMSE: {quality_metrics['rmse']:.4f}")
-    print(f"  MSE: {quality_metrics['mse']:.4f}")
-    print("-" * 60)
-
-    #  Đóng gói và lưu
-    print("[4/4] Đang đóng gói và xuất mô hình...")
-    model_data = {
-        'rf_disorder': rf_disorder,
-        'rf_quality': rf_quality,
-        'occ_map': occ_map,  # Lưu lại từ điển nghề nghiệp
-        'bmi_map': bmi_map   # Lưu lại từ điển cân nặng
-    }
-    
-    with open('sleep_model_brain.pkl', 'wb') as f:
-        pickle.dump(model_data, f)
+    def train_from_csv(self, csv_path):
+        print("Loading data from CSV...")
+        dataset, self.occ_map, self.bmi_map = self._load_csv_data(csv_path)
         
-    print("-" * 60)
-    print("THÀNH CÔNG! Đã lưu toàn bộ train vào file: sleep_model_brain.pkl")
-    print("="*60)
+        print("Splitting data...")
+        train_set, test_set = train_test_split(dataset, test_ratio=0.2, seed=42)
+        
+        # Features for different models
+        features_disorder = ['Age', 'Occ_Num', 'BMI_Num', 'Systolic', 'Diastolic', 'Stress Level']
+        features_quality = ['Physical Activity Level', 'Stress Level']
+        
+        print("Start training Random Forest...")
+        
+        # Train disorder classification model
+        self.rf_disorder = random_forest(
+            train=train_set,
+            max_depth=self.max_depth,
+            min_size=self.min_size,
+            sample_size=self.sample_size,
+            n_trees=self.n_trees,
+            features=features_disorder,
+            target_col='Sleep Disorder',
+            mode='classification'
+        )
+        
+        # Train quality regression model
+        self.rf_quality = random_forest(
+            train=train_set,
+            max_depth=self.max_depth,
+            min_size=self.min_size,
+            sample_size=self.sample_size,
+            n_trees=self.n_trees,
+            features=features_quality,
+            target_col='Quality of Sleep',
+            mode='regression'
+        )
 
-if __name__ == '__main__':
-    random.seed(42) 
-    train_and_save()
+        print("Evaluating model...")
+        
+        # Evaluate disorder model
+        disorder_actual = [row['Sleep Disorder'] for row in test_set]
+        disorder_predicted = [predict_rf(self.rf_disorder, row, mode='classification') for row in test_set]
+        disorder_metrics = evaluate_classification(disorder_actual, disorder_predicted)
+        
+        # Evaluate quality model
+        quality_actual = [row['Quality of Sleep'] for row in test_set]
+        quality_predicted = [predict_rf(self.rf_quality, row, mode='regression') for row in test_set]
+        quality_metrics = evaluate_regression(quality_actual, quality_predicted)
+        
+        acc = disorder_metrics['accuracy']
+        print(f"Accuracy: {acc:.4f}")
+        return acc
+
+    def predict_from_form(self, form_data):
+        # Process input data
+        bp = form_data['Blood Pressure'].split('/')
+        systolic = int(bp[0])
+        diastolic = int(bp[1])
+        
+        bmi = form_data['BMI Category']
+        if bmi == 'Normal Weight': 
+            bmi = 'Normal'
+        
+        processed_input = {
+            'Age': float(form_data['Age']),
+            'Occ_Num': self.occ_map.get(form_data['Occupation'], 0),
+            'BMI_Num': self.bmi_map.get(bmi, 0),
+            'Systolic': systolic,
+            'Diastolic': diastolic,
+            'Stress Level': float(form_data['Stress Level']),
+            'Physical Activity Level': float(form_data['Physical Activity Level'])
+        }
+
+        # Make predictions
+        pred_disorder = predict_rf(self.rf_disorder, processed_input, mode='classification')
+        pred_quality = predict_rf(self.rf_quality, processed_input, mode='regression')
+
+        return {
+            "prediction": pred_disorder,
+            "quality_score": round(pred_quality, 2)
+        }
+
+    def save_model(self, filepath):
+        model_data = {
+            'rf_disorder': self.rf_disorder,
+            'rf_quality': self.rf_quality,
+            'occ_map': self.occ_map,
+            'bmi_map': self.bmi_map
+        }
+        with open(filepath, "wb") as f:
+            pickle.dump(model_data, f)
+
+    @staticmethod
+    def load_model(filepath):
+        with open(filepath, "rb") as f:
+            model_data = pickle.load(f)
+        
+        system = SleepCycleSystem()
+        system.rf_disorder = model_data['rf_disorder']
+        system.rf_quality = model_data['rf_quality']
+        system.occ_map = model_data['occ_map']
+        system.bmi_map = model_data['bmi_map']
+        return system
+
+
+# =========================================================
+# EXAMPLE USAGE
+# =========================================================
+if __name__ == "__main__":
+    system = SleepCycleSystem()
+
+    # Train model
+    accuracy = system.train_from_csv(
+        "/home/nauq-anh/django_project/Sleep_Cycle/Sleep_health_and_lifestyle_data.csv"
+    )
+
+    # Save model
+    system.save_model("models/random_forest_model.pkl")
+
+    # Predict from form
+    sample_user = {
+        "Gender": "Male",
+        "Age": 25,
+        "Occupation": "Engineer",
+        "Sleep Duration": 6.0,
+        "Quality of Sleep": 6,
+        "Physical Activity Level": 35,
+        "Stress Level": 8,
+        "BMI Category": "Overweight",
+        "Blood Pressure": "130/85",
+        "Heart Rate": 78,
+        "Daily Steps": 4000
+    }
+
+    result = system.predict_from_form(sample_user)
+
+    print("Prediction:", result["prediction"])
+    print("Quality Score:", result["quality_score"])
