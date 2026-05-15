@@ -35,6 +35,12 @@
                 <span class="status-label">Rủi Ro Sleep Apnea</span>
                 <span class="status-value">{{ analysis.apnea_label }}</span>
             </div>
+            {% if analysis.algorithm_used %}
+            <div class="status-item moderate">
+                <span class="status-label">🤖 Thuật Toán</span>
+                <span class="status-value">{{ analysis.algorithm_used }}</span>
+            </div>
+            {% endif %}
         </div>
     </div>
 </section>

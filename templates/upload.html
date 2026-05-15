@@ -8,8 +8,8 @@
         <span class="eyebrow">Bắt Đầu Phân Tích</span>
         <h1>Tải lên dữ liệu giấc ngủ của bạn</h1>
         <p class="copy-block push-down-md max-70">
-            Tải file CSV chứa các chỉ số giấc ngủ từ thiết bị đeo (Apple Watch, Fitbit, Garmin...). 
-            Chúng tôi sẽ phân tích ngay lập tức và đưa ra báo cáo chi tiết.
+            Chọn một trong hai cách: Tải file CSV từ thiết bị đeo hoặc nhập dữ liệu thủ công. 
+            Backend sẽ tự động lựa chọn thuật toán phù hợp với dữ liệu của bạn.
         </p>
     </div>
 </section>
@@ -35,215 +35,462 @@
 
 <section class="section form-section">
     <div class="form-container">
-        <div class="form-header">
-            <h2>Tải File CSV</h2>
-            <p class="form-description">
-                Các cột dự kiến: Sleep Hours, Deep Sleep %, REM Sleep %, SpO2, HRV, RHR, Awakenings, Wake Time
-            </p>
+        <div class="tab-navigation">
+            <button class="tab-button active" data-tab="csv-upload">
+                📤 Tải File CSV
+            </button>
+            <button class="tab-button" data-tab="manual-input">
+                ✍️ Nhập Dữ Liệu Thủ Công
+            </button>
         </div>
 
-        <form method="post" action="{% url 'upload_page' %}" enctype="multipart/form-data" class="upload-form">
-            {% csrf_token %}
+        <!-- TAB 1: CSV Upload -->
+        <div class="tab-content active" id="csv-upload">
+            <div class="form-header">
+                <h2>Tải File CSV từ Thiết Bị Đeo</h2>
+                <p class="form-description">
+                    Hỗ trợ: Apple Watch, Fitbit, Garmin, Oura Ring, v.v...
+                    Các cột dự kiến: Sleep Hours, Deep Sleep, REM Sleep, SpO2, HRV, RHR, Awakenings
+                </p>
+            </div>
+
+            <form method="post" action="{% url 'upload_page' %}" enctype="multipart/form-data" class="upload-form">
+                {% csrf_token %}
+                
+                <div class="form-group">
+                    <label for="csv-file" class="file-label">
+                        <input type="file" id="csv-file" name="sleep_data_file" accept=".csv,text/csv" required>
+                        <span class="file-input-icon">📁</span>
+                        <span class="file-input-text">Chọn file CSV hoặc kéo thả vào đây</span>
+                    </label>
+                </div>
+
+                <button type="submit" class="button button-primary">
+                    <span>📤</span> Tải Lên & Phân Tích
+                </button>
+            </form>
+
+            {% if upload_error %}
+            <div class="status-block error-block push-up-md">
+                <span class="status-icon">❌</span>
+                <div>
+                    <strong>Upload chưa thành công</strong>
+                    <p>{{ upload_error }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if upload_meta %}
+            <div class="status-block success-block push-up-md">
+                <span class="status-icon">✅</span>
+                <div>
+                    <strong>Dữ liệu sẵn sàng phân tích</strong>
+                    <p>File <code>{{ upload_meta.file_name }}</code> có <strong>{{ upload_meta.rows }} dòng</strong>, <strong>{{ upload_meta.columns }} cột</strong>.</p>
+                </div>
+            </div>
             
-            <div class="form-group">
-                <label for="csv-file" class="file-label">
-                    <input type="file" id="csv-file" name="sleep_data_file" accept=".csv,text/csv" required>
-                    <span class="file-input-text">Chọn file CSV hoặc kéo thả vào đây</span>
-                </label>
+            {% if data_preview %}
+            <div class="table-wrap push-down-lg">
+                <p class="push-down-md"><strong>Preview dữ liệu (5 dòng đầu):</strong></p>
+                {{ data_preview|safe }}
             </div>
-
-            <button type="submit" class="button button-primary">Tải Lên & Phân Tích</button>
-        </form>
-
-        {% if upload_error %}
-        <div class="status-block error-block push-up-md">
-            <span class="status-icon">❌</span>
-            <div>
-                <strong>Upload chưa thành công</strong>
-                <p>{{ upload_error }}</p>
+            {% endif %}
+            
+            {% if missing_columns %}
+            <div class="status-block warning-block push-up-md">
+                <span class="status-icon">⚠️</span>
+                <div>
+                    <strong>Cột thiếu</strong>
+                    <p>Các cột sau không tìm thấy: <code>{{ missing_columns|join:", " }}</code>. Giá trị mặc định sẽ được dùng.</p>
+                </div>
             </div>
+            {% endif %}
+
+            {% if uploaded_input %}
+            <div class="push-up-lg">
+                <form method="post" action="{% url 'dashboard_page' %}" class="inline-form">
+                    {% csrf_token %}
+                    {% for key, value in uploaded_input.items %}
+                    <input type="hidden" name="{{ key }}" value="{{ value }}">
+                    {% endfor %}
+                    <button class="button button-secondary" type="submit">
+                        <span>🚀</span> Phân tích dòng đầu tiên từ CSV
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+            {% endif %}
         </div>
-        {% endif %}
 
-        {% if upload_meta %}
-        <div class="status-block success-block push-up-md">
-            <span class="status-icon">✅</span>
-            <div>
-                <strong>Dữ liệu sẵn sàng phân tích</strong>
-                <p>File `{{ upload_meta.file_name }}` có {{ upload_meta.rows }} dòng, {{ upload_meta.columns }} cột.</p>
+        <!-- TAB 2: Manual Input Form -->
+        <div class="tab-content" id="manual-input">
+            <div class="form-header">
+                <h2>Nhập Dữ Liệu Giấc Ngủ Thủ Công</h2>
+                <p class="form-description">
+                    Điền thông tin từ ứng dụng theo dõi giấc ngủ hoặc thiết bị đeo của bạn.
+                </p>
             </div>
+
+            <form method="post" action="{% url 'dashboard_page' %}" class="form-with-gap">
+                {% csrf_token %}
+                <div class="form-grid">
+                    <label>
+                        <span class="label-title">👤 Tên người dùng</span>
+                        <input type="text" name="user_name" value="{{ default_input.user_name }}" placeholder="Tên của bạn">
+                        <span class="field-note">Để cá nhân hóa kết quả.</span>
+                    </label>
+                    <label>
+                        <span class="label-title">⏰ Giờ thức dậy</span>
+                        <input type="time" name="wake_time" value="{{ default_input.wake_time }}">
+                        <span class="field-note">Để tính giờ đi ngủ lý tưởng.</span>
+                    </label>
+                    <label>
+                        <span class="label-title">😴 Tổng thời gian ngủ (giờ)</span>
+                        <input type="number" step="0.1" min="0" max="12" name="sleep_hours" value="{{ default_input.sleep_hours }}">
+                        <span class="field-note">Tổng giờ ngủ trong đêm.</span>
+                    </label>
+                    <label>
+                        <span class="label-title">🎯 Mục tiêu ngủ (giờ)</span>
+                        <input type="number" step="0.1" min="0" max="12" name="target_sleep_hours" value="{{ default_input.target_sleep_hours }}">
+                        <span class="field-note">Mốc chuẩn để tính sleep debt.</span>
+                    </label>
+                    <label>
+                        <span class="label-title">🌙 Deep Sleep (phút)</span>
+                        <input type="number" min="0" max="600" name="deep_sleep_minutes" value="{{ default_input.deep_sleep_minutes }}">
+                        <span class="field-note">Giấc ngủ sâu (60-120 phút/đêm là tốt).</span>
+                    </label>
+                    <label>
+                        <span class="label-title">💭 REM Sleep (phút)</span>
+                        <input type="number" min="0" max="600" name="rem_sleep_minutes" value="{{ default_input.rem_sleep_minutes }}">
+                        <span class="field-note">Giấc ngủ mơ (80-120 phút/đêm là tốt).</span>
+                    </label>
+                    <label>
+                        <span class="label-title">⏰ Số lần thức giấc</span>
+                        <input type="number" min="0" max="20" name="awakenings" value="{{ default_input.awakenings }}">
+                        <span class="field-note">0-2 lần là lý tưởng.</span>
+                    </label>
+                    <label>
+                        <span class="label-title">💗 HRV (ms)</span>
+                        <input type="number" min="0" max="200" name="hrv" value="{{ default_input.hrv }}">
+                        <span class="field-note">HRV cao = phục hồi tốt (>40ms là tốt).</span>
+                    </label>
+                    <label>
+                        <span class="label-title">❤️ RHR (bpm)</span>
+                        <input type="number" min="40" max="100" name="rhr" value="{{ default_input.rhr }}">
+                        <span class="field-note">Nhịp tim khi ngủ (50-60 là bình thường).</span>
+                    </label>
+                    <label>
+                        <span class="label-title">🫁 Sự kiện giảm SpO2</span>
+                        <input type="number" min="0" max="50" name="spo2_drop_events" value="{{ default_input.spo2_drop_events }}">
+                        <span class="field-note"><3 sự kiện là bình thường.</span>
+                    </label>
+                    <label>
+                        <span class="label-title">📅 Ngày thiếu ngủ liên tiếp</span>
+                        <input type="number" min="1" max="30" name="consecutive_days" value="{{ default_input.consecutive_days }}">
+                        <span class="field-note">Để tính tích lũy nợ ngủ.</span>
+                    </label>
+                </div>
+
+                <div class="button-row">
+                    <button class="button button-primary" type="submit">
+                        <span>🚀</span> Phân tích ngay
+                    </button>
+                    <a class="button button-secondary" href="{% url 'upload_page' %}">
+                        <span>↻</span> Làm lại
+                    </a>
+                </div>
+            </form>
         </div>
-        {% endif %}
     </div>
 </section>
 
 <section class="section faq-section">
-    <h2>Thường Gặp</h2>
+    <h2>❓ Thường Gặp</h2>
     <div class="grid-2">
         <article class="faq-card">
-            <h4>🎯 File CSV cần như thế nào?</h4>
-            <p>File phải có header row và chứa ít nhất các cột chỉ số: Sleep Hours, Deep Sleep %, REM Sleep %, SpO2, HRV, RHR, Awakenings.</p>
+            <h4>📄 File CSV cần như thế nào?</h4>
+            <p>File phải có header row và chứa các cột: Sleep Hours, Deep Sleep, REM Sleep, HRV, RHR, Awakenings, SpO2. Tên cột có thể bằng tiếng Anh hoặc Việt.</p>
         </article>
+        
         <article class="faq-card">
             <h4>📈 Kết quả phân tích bao gồm gì?</h4>
-            <p>Bạn sẽ nhận được: Phân loại chất lượng, Recovery Score, cảnh báo rủi ro, mức stress, dự báo năng lượng, và khuyến nghị tuyên cá nhân hóa.</p>
+            <p>Recovery Score, phân loại chất lượng, cảnh báo Sleep Apnea, mức stress, dự báo năng lượng, khuyến nghị, chu kỳ giấc ngủ.</p>
         </article>
+        
+        <article class="faq-card">
+            <h4>🤖 Backend chọn thuật toán như nào?</h4>
+            <p>Hệ thống phân tích độ phức tạp (stress, apnea risk, sleep gap) và tự chọn: Linear Regression, Logistic Regression, Random Forest, hoặc KNN.</p>
+        </article>
+        
         <article class="faq-card">
             <h4>🔒 Dữ liệu có được lưu không?</h4>
-            <p>Dữ liệu chỉ được xử lý tạm thời để phân tích. Bạn có thể tải xuống kết quả hoặc upload file mới để phân tích lại.</p>
-        </article>
-        <article class="faq-card">
-            <h4>⚙️ Những chỉ số nào là quan trọng nhất?</h4>
-            <p>Deep Sleep %, REM %, SpO2, HRV, và tổng Sleep Hours là những yếu tố chính ảnh hưởng đến Recovery Score.</p>
+            <p>Tất cả dữ liệu được lưu để bạn theo dõi lịch sử. Bạn có quyền quản lý dữ liệu của mình.</p>
         </article>
     </div>
 </section>
-{% endblock %}
-            </p>
-        </div>
-        {% endif %}
 
-        {% if upload_missing_columns %}
-        <p class="footer-note">
-            Các cột chưa có trong file nên đang dùng giá trị mặc định:
-            {{ upload_missing_columns|join:", " }}.
-        </p>
-        {% endif %}
+<style>
+    .tab-navigation {
+        display: flex;
+        gap: 12px;
+        border-bottom: 2px solid var(--line);
+        margin-bottom: 32px;
+        flex-wrap: wrap;
+    }
 
-        {% if data_preview %}
-        <div class="table-wrap push-down-lg">
-            {{ data_preview|safe }}
-        </div>
-        {% endif %}
+    .tab-button {
+        padding: 12px 24px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 1rem;
+        color: var(--muted);
+        font-weight: 500;
+        transition: color var(--transition);
+    }
 
-        {% if uploaded_input %}
-        <form method="post" action="{% url 'dashboard_page' %}" class="inline-form push-down-lg">
-            {% csrf_token %}
-            {% for key, value in uploaded_input.items %}
-            <input type="hidden" name="{{ key }}" value="{{ value }}">
-            {% endfor %}
-            <div class="button-row">
-                <button class="button button-secondary" type="submit">Phân tích dòng đầu tiên từ CSV</button>
-            </div>
-        </form>
-        {% endif %}
-    </section>
+    .tab-button:hover {
+        color: var(--ink);
+    }
 
-    <aside class="panel">
-        <span class="eyebrow">Thiết kế dashboard</span>
-        <h3 class="stack-bottom-md">Cách giao diện sẽ hiển thị kết quả</h3>
-        <div class="grid-2">
-            <div class="metric">
-                <div class="metric-head">
-                    <div>
-                        <span class="muted-label">Top summary</span>
-                        <div class="card-value">Recovery</div>
-                    </div>
-                    <span class="tone-pill good">Score ring</span>
-                </div>
-              </div>
-            <div class="metric">
-                <div class="metric-head">
-                    <div>
-                        <span class="muted-label">Risk block</span>
-                        <div class="card-value">Apnea / Stress</div>
-                    </div>
-                    <span class="tone-pill risk">Cảnh báo</span>
+    .tab-button.active {
+        color: var(--primary);
+        border-bottom: 2px solid var(--primary);
+        margin-bottom: -2px;
+    }
 
-                </div>
-               </div>
-            <div class="metric">
-                <div class="metric-head">
-                    <div>
-                        <span class="muted-label">Forecast</span>
-                        <div class="card-value">Energy</div>
-                    </div>
-                    <span class="tone-pill moderate">Ngày mai</span>
-                </div>
-            </div>
-            <div class="metric">
-                <div class="metric-head">
-                    <div>
-                        <span class="muted-label">De xuat</span>
-                        <div class="card-value">Sleep Debt</div>
-                    </div>
-                    <span class="tone-pill moderate">Actionable</span>
-                </div>
-                <p>Tổng nợ ngủ và đề xuất giờ đi ngủ lý tưởng để người dùng có hành động rõ ràng.</p>
-            </div>
-        </div>
-    </aside>
-</section>
+    .tab-content {
+        display: none;
+    }
 
-<section class="section insight-row">
-    <section class="panel">
-        <span class="eyebrow">Nhập tín hiệu</span>
-        <h2>Dữ liệu đầu vào cho phiên phân tích</h2>
-        <form method="post" action="{% url 'dashboard_page' %}" class="form-with-gap">
-            {% csrf_token %}
-            <div class="form-grid">
-                <label>
-                    Tên người dùng
-                    <input type="text" name="user_name" value="{{ default_input.user_name }}" placeholder="Nguyen An">
-                    <span class="field-note"> Cá nhân hóa phần summary trên dashboard.</span>
-                </label>
-                <label>
-                    Giờ thức dậy
-                    <input type="time" name="wake_time" value="{{ default_input.wake_time }}">
-                    <span class="field-note">Mốc để tính bedtime lý tưởng.</span>
-                </label>
-                <label>
-                    Tổng thời gian ngủ (giờ)
-                    <input type="number" step="0.1" min="0" name="sleep_hours" value="{{ default_input.sleep_hours }}">
-                    <span class="field-note">Tổng số giờ ngủ trong đêm gần nhất.</span>
-                </label>
-                <label>
-                    Mục tiêu ngủ sinh học (giờ)
-                    <input type="number" step="0.1" min="0" name="target_sleep_hours" value="{{ default_input.target_sleep_hours }}">
-                    <span class="field-note">Mốc chuẩn để tính thiếu hụt và sleep debt.</span>
-                </label>
-                <label>
-                    Deep Sleep (phút)
-                    <input type="number" min="0" name="deep_sleep_minutes" value="{{ default_input.deep_sleep_minutes }}">
-                    <span class="field-note">Giảm mạnh sẽ kéo Recovery Score xuống.</span>
-                </label>
-                <label>
-                    REM Sleep (phút)
-                    <input type="number" min="0" name="rem_sleep_minutes" value="{{ default_input.rem_sleep_minutes }}">
-                    <span class="field-note">Ảnh hưởng trực tiếp tới dự báo năng lượng và tỉnh táo.</span>
-                </label>
-                <label>
-                    Số lần thức giấc
-                    <input type="number" min="0" name="awakenings" value="{{ default_input.awakenings }}">
-                    <span class="field-note">Cho biết mức độ phân mảnh giấc ngủ.</span>
-                </label>
-                <label>
-                    Sự kiện giảm SpO2
-                    <input type="number" min="0" name="spo2_drop_events" value="{{ default_input.spo2_drop_events }}">
-                    <span class="field-note">Tín hiệu đầu vào quan trọng để cảnh báo Sleep Apnea.</span>
-                </label>
-                <label>
-                    HRV trung bình (ms)
-                    <input type="number" min="0" name="hrv" value="{{ default_input.hrv }}">
-                    <span class="field-note">HRV thấp thường đi kèm stress hoặc phục hồi kém.</span>
-                </label>
-                <label>
-                    RHR khi ngủ (bpm)
-                    <input type="number" min="0" name="rhr" value="{{ default_input.rhr }}">
-                    <span class="field-note">RHR tăng có thể phản ánh tải stress hoặc hồi phục kém.</span>
-                </label>
-                <label class="span-full">
-                    Số ngày thiếu ngủ liên tiếp
-                    <input type="number" min="1" name="consecutive_days" value="{{ default_input.consecutive_days }}">
-                    <span class="field-note">Tích lũy thay vì chỉ đánh giá một đêm đơn lẻ.</span>
-                </label>
-            </div>
+    .tab-content.active {
+        display: block;
+    }
 
-            <div class="button-row">
-                <button class="button button-primary" type="submit">Phân tích ngay</button>
-                <a class="button button-secondary" href="{% url 'dashboard_page' %}">Xem dashboard mẫu</a>
-            </div>
-        </form>
-    </section>
-</section>
+    .label-title {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 6px;
+        color: var(--ink);
+    }
+
+    .file-label {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        padding: 40px;
+        border: 2px dashed var(--primary);
+        border-radius: var(--radius-lg);
+        background-color: var(--primary-light);
+        cursor: pointer;
+        transition: all var(--transition);
+    }
+
+    .file-label:hover {
+        background-color: var(--primary-soft);
+    }
+
+    .file-label input {
+        display: none;
+    }
+
+    .file-input-icon {
+        font-size: 2rem;
+    }
+
+    .status-block {
+        display: flex;
+        gap: 12px;
+        padding: 16px;
+        border-radius: var(--radius-md);
+        margin-top: 16px;
+    }
+
+    .error-block {
+        background-color: var(--error-soft);
+        border: 1px solid var(--error);
+    }
+
+    .success-block {
+        background-color: var(--success-soft);
+        border: 1px solid var(--success);
+    }
+
+    .warning-block {
+        background-color: var(--warning-soft);
+        border: 1px solid var(--warning);
+    }
+
+    .status-icon {
+        font-size: 1.5rem;
+        flex-shrink: 0;
+    }
+
+    .status-block strong {
+        display: block;
+        margin-bottom: 4px;
+    }
+
+    .status-block p {
+        margin: 0;
+        font-size: 0.95rem;
+    }
+
+    .status-block code {
+        background-color: rgba(0, 0, 0, 0.1);
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-family: monospace;
+        font-size: 0.9rem;
+    }
+
+    .table-wrap {
+        overflow-x: auto;
+        margin-top: 16px;
+    }
+
+    .table-wrap table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+    }
+
+    .table-wrap thead {
+        background-color: var(--primary-soft);
+    }
+
+    .table-wrap th,
+    .table-wrap td {
+        padding: 8px 12px;
+        text-align: left;
+        border-bottom: 1px solid var(--line);
+    }
+
+    .table-wrap tbody tr:hover {
+        background-color: var(--primary-light);
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+
+    @media (max-width: 768px) {
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .form-grid label {
+        margin-bottom: 0;
+    }
+
+    .form-grid input {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: var(--radius-sm);
+        font-family: inherit;
+        font-size: 1rem;
+    }
+
+    .form-grid input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px var(--primary-light);
+    }
+
+    .button-row {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 24px;
+    }
+
+    .button {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 24px;
+        border-radius: var(--radius-md);
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all var(--transition);
+    }
+
+    .button-primary {
+        background-color: var(--primary);
+        color: white;
+    }
+
+    .button-primary:hover {
+        background-color: #0a5f58;
+        box-shadow: var(--shadow);
+    }
+
+    .button-secondary {
+        background-color: transparent;
+        color: var(--primary);
+        border: 2px solid var(--primary);
+        text-decoration: none;
+    }
+
+    .button-secondary:hover {
+        background-color: var(--primary-light);
+    }
+
+    .inline-form {
+        margin-top: 16px;
+    }
+</style>
+
+<script>
+    // Tab Switching
+    document.querySelectorAll('.tab-button').forEach(button => {
+        button.addEventListener('click', (e) => {
+            const tabName = button.dataset.tab;
+            
+            document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            button.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+        });
+    });
+
+    // Drag and drop for file input
+    const fileLabel = document.querySelector('.file-label');
+    if (fileLabel) {
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            fileLabel.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            });
+        });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            fileLabel.addEventListener(eventName, () => {
+                fileLabel.style.borderColor = 'var(--primary)';
+                fileLabel.style.backgroundColor = 'var(--primary-soft)';
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            fileLabel.addEventListener(eventName, () => {
+                fileLabel.style.borderColor = '';
+                fileLabel.style.backgroundColor = '';
+            });
+        });
+
+        fileLabel.addEventListener('drop', (e) => {
+            const files = e.dataTransfer.files;
+            document.getElementById('csv-file').files = files;
+        });
+    }
+</script>
+
 {% endblock %}
