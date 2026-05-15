@@ -1,6 +1,15 @@
-Date,Total_Sleep_hrs,Deep_Sleep_pct,REM_Sleep_pct,Awake_Count,SpO2_avg,HRV,RHR
-2023-10-01,7.5,18.5,20.0,2,96,45,62
-2023-10-02,6.0,12.0,15.0,4,92,30,68
-2023-10-03,8.2,22.0,25.0,1,98,55,58
-2023-10-04,5.5,10.0,18.0,5,89,25,72
-2023-10-05,7.0,15.0,21.0,3,95,40,65
+Name,Gender,Age,Occupation,Sleep Duration,Physical Activity Level,Stress Level,BMI Category,Blood Pressure,Heart Rate,Daily Steps
+Nguyen Van A,Male,30,Software Engineer,6.5,40,7,Overweight,135/85,75,5000
+Nguyen Van A,Male,30,Software Engineer,5.0,30,8,Overweight,140/90,80,3000
+Nguyen Van A,Male,30,Software Engineer,7.0,50,6,Overweight,130/80,72,6000
+Nguyen Van A,Male,30,Software Engineer,6.0,40,7,Overweight,135/85,76,5500
+Nguyen Van A,Male,30,Software Engineer,5.5,35,8,Overweight,138/88,78,4000
+Nguyen Van A,Male,30,Software Engineer,8.0,60,5,Overweight,125/80,70,8000
+Nguyen Van A,Male,30,Software Engineer,7.5,55,5,Overweight,128/82,71,7000
+Nguyen Van A,Male,30,Software Engineer,6.0,40,7,Overweight,135/85,76,5500
+Nguyen Van A,Male,30,Software Engineer,5.0,30,8,Overweight,140/90,80,3000
+Nguyen Van A,Male,30,Software Engineer,7.0,50,6,Overweight,130/80,72,6000
+Nguyen Van A,Male,30,Software Engineer,6.0,40,7,Overweight,135/85,76,5500
+Nguyen Van A,Male,30,Software Engineer,5.5,35,8,Overweight,138/88,78,4000
+Nguyen Van A,Male,30,Software Engineer,8.0,60,5,Overweight,125/80,70,8000
+Nguyen Van A,Male,30,Software Engineer,7.5,55,5,Overweight,128/82,71,7000
