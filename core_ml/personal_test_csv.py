@@ -18,7 +18,7 @@ def predict_rf(trees, row, mode):
         return sum(predictions) / len(predictions)
 
 def run_weekly_prediction():
-    print("Đang nạp dữ liệu từ 'sleep_model_brain.pkl'...")
+    print("Đang nạp dữ liệu từ 'sleep_model.pkl'...")
     try:
         with open('sleep_model_brain.pkl', 'rb') as f:
             model_data = pickle.load(f)

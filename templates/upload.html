@@ -115,6 +115,41 @@ Liệu{% endblock %} {% block content %}
         </p>
         {{ data_preview|safe }}
       </div>
+      {% endif %} {% if model_predictions %}
+      <div class="status-block info-block push-up-md">
+        <span class="status-icon">🤖</span>
+        <div>
+          <strong>Mô hình backend</strong>
+          <p>Predict từ <code>{{ model_predictions.model_file }}</code></p>
+          <ul class="model-summary">
+            <li>
+              <strong>Nguy cơ rối loạn giấc ngủ:</strong> {{
+              model_predictions.sleep_disorder }}
+            </li>
+            <li>
+              <strong>Quality score:</strong> {{
+              model_predictions.quality_of_sleep }}
+            </li>
+            <li>
+              <strong>Rủi ro bệnh tim:</strong> {{
+              model_predictions.heart_disease }}
+            </li>
+            <li>
+              <strong>Nguy cơ Alzheimer:</strong>
+              {% if model_predictions.alzheimer_risk is not None %} {{
+              model_predictions.alzheimer_risk }} {% else %} Chưa có {% endif %}
+            </li>
+          </ul>
+        </div>
+      </div>
+      {% elif upload_meta and uploaded_input and not model_predictions %}
+      <div class="status-block warning-block push-up-md">
+        <span class="status-icon">⚠️</span>
+        <div>
+          <strong>Không thể dùng mô hình sleep_model.pkl</strong>
+          <p>File CSV thiếu các trường cần thiết để chạy Random Forest.</p>
+        </div>
+      </div>
       {% endif %} {% if missing_columns %}
       <div class="status-block warning-block push-up-md">
         <span class="status-icon">Error</span>
@@ -136,7 +171,30 @@ Liệu{% endblock %} {% block content %}
         >
           {% csrf_token %} {% for key, value in uploaded_input.items %}
           <input type="hidden" name="{{ key }}" value="{{ value }}" />
-          {% endfor %}
+          {% endfor %} {% if model_predictions %}
+          <input
+            type="hidden"
+            name="model_sleep_disorder"
+            value="{{ model_predictions.sleep_disorder }}"
+          />
+          <input
+            type="hidden"
+            name="model_quality_of_sleep"
+            value="{{ model_predictions.quality_of_sleep }}"
+          />
+          {% if model_predictions.heart_disease is not None %}
+          <input
+            type="hidden"
+            name="model_heart_disease"
+            value="{{ model_predictions.heart_disease }}"
+          />
+          {% endif %} {% if model_predictions.alzheimer_risk is not None %}
+          <input
+            type="hidden"
+            name="model_alzheimer_risk"
+            value="{{ model_predictions.alzheimer_risk }}"
+          />
+          {% endif %} {% endif %}
           <button class="button button-secondary" type="submit">
             <span>🚀</span> Phân tích dòng đầu tiên từ CSV
           </button>
@@ -204,6 +262,21 @@ Liệu{% endblock %} {% block content %}
               value="{{ default_input.target_sleep_hours }}"
             />
             <span class="field-note">Mốc chuẩn để tính sleep debt.</span>
+          </label>
+          <label>
+            <span class="label-title"> Dự đoán</span>
+            <select name="algorithm_choice">
+              <option value="Auto" {% if default_input.algorithm_choice == "Auto" %}selected{% endif %}>
+                Tự động chọn
+              </option>
+              <option value="Linear Regression">Linear Regression</option>
+              <option value="Logistic Regression">Logistic Regression</option>
+              <option value="Random Forest">Random Forest</option>
+              <option value="KNN">KNN</option>
+            </select>
+            <span class="field-note"
+              >Lựa chọn thuật toán muốn sử dụng hoặc giữ mặc định tự động.</span
+            >
           </label>
           <label>
             <span class="label-title"> Deep Sleep (phút)</span>
@@ -306,10 +379,10 @@ Liệu{% endblock %} {% block content %}
 </section>
 
 <section class="section faq-section">
-  <h2>❓ Thường Gặp</h2>
+  <h2>Thường Gặp</h2>
   <div class="grid-2">
     <article class="faq-card">
-      <h4> File CSV cần như thế nào?</h4>
+      <h4>File CSV cần như thế nào?</h4>
       <p>
         File phải có header row và chứa các cột: Sleep Hours, Deep Sleep, REM
         Sleep, HRV, RHR, Awakenings, SpO2. Tên cột có thể bằng tiếng Anh hoặc
@@ -318,7 +391,7 @@ Liệu{% endblock %} {% block content %}
     </article>
 
     <article class="faq-card">
-      <h4> Kết quả phân tích bao gồm gì?</h4>
+      <h4>Kết quả phân tích bao gồm gì?</h4>
       <p>
         Recovery Score, phân loại chất lượng, cảnh báo Sleep Apnea, mức stress,
         dự báo năng lượng, khuyến nghị, chu kỳ giấc ngủ.
@@ -326,7 +399,7 @@ Liệu{% endblock %} {% block content %}
     </article>
 
     <article class="faq-card">
-      <h4> Backend chọn thuật toán như nào?</h4>
+      <h4>Backend chọn thuật toán như nào?</h4>
       <p>
         Hệ thống phân tích độ phức tạp (stress, apnea risk, sleep gap) và tự
         chọn: Linear Regression, Logistic Regression, Random Forest, hoặc KNN.
@@ -334,7 +407,7 @@ Liệu{% endblock %} {% block content %}
     </article>
 
     <article class="faq-card">
-      <h4> Dữ liệu có được lưu không?</h4>
+      <h4>Dữ liệu có được lưu không?</h4>
       <p>
         Tất cả dữ liệu được lưu để bạn theo dõi lịch sử. Bạn có quyền quản lý dữ
         liệu của mình.
