@@ -1,5 +1,6 @@
-{% extends "base.html" %} {% block title %}Sleep Cycle Intelligence | Nhập Dữ
-Liệu{% endblock %} {% block content %}
+{% extends "base.html" %} 
+{% block title %}Sleep Cycle Intelligence | Nhập Dữ Liệu{% endblock %} 
+{% block content %}
 <section class="hero">
   <div class="hero-content">
     <span class="eyebrow">Bắt Đầu Phân Tích</span>
@@ -48,7 +49,6 @@ Liệu{% endblock %} {% block content %}
       </button>
     </div>
 
-    <!-- TAB 1: CSV Upload -->
     <div class="tab-content active" id="csv-upload">
       <div class="form-header">
         <h2>Tải File CSV từ Thiết Bị Đeo</h2>
@@ -145,13 +145,11 @@ Liệu{% endblock %} {% block content %}
       {% endif %} {% endif %}
     </div>
 
-    <!-- TAB 2: Manual Input Form -->
     <div class="tab-content" id="manual-input">
       <div class="form-header">
         <h2>Nhập Dữ Liệu Giấc Ngủ Thủ Công</h2>
         <p class="form-description">
-          Điền thông tin từ ứng dụng theo dõi giấc ngủ hoặc thiết bị đeo của
-          bạn.
+          Điền 13 thông số theo chuẩn Sleep Health & Lifestyle Dataset.
         </p>
       </div>
 
@@ -164,141 +162,165 @@ Liệu{% endblock %} {% block content %}
         <div class="form-grid">
           <label>
             <span class="label-title"> Tên người dùng</span>
+             <input  
+             name="user_name"
+             placeholder="Nhập tên của bạn (VD: Nguyễn Văn A)"
+           />
+             <span class="field-note">Để hiển thị tên trên bảng điều khiển.</span>
+            </label>
+
+          <label>
+            <span class="label-title"> Giới tính (Gender)</span>
+            <select name="gender" required>
+              <option value="" disabled selected>Chọn giới tính</option>
+              <option value="Male">Nam (Male)</option>
+              <option value="Female">Nữ (Female)</option>
+            </select>
+            <span class="field-note">Giới tính sinh học.</span>
+          </label>
+
+          <label>
+            <span class="label-title"> Tuổi (Age)</span>
+            <input
+              type="number"
+              name="age"
+              value="{{ default_input.age }}"
+              placeholder="VD: 25"
+              required
+            />
+            <span class="field-note">Độ tuổi hiện tại.</span>
+          </label>
+
+          <label>
+            <span class="label-title"> Nghề nghiệp (Occupation)</span>
             <input
               type="text"
-              name="user_name"
-              value="{{ default_input.user_name }}"
-              placeholder="Tên của bạn"
+              name="occupation"
+              value="{{ default_input.occupation }}"
+              placeholder="VD: Software Engineer"
+              required
             />
-            <span class="field-note">Để cá nhân hóa kết quả.</span>
+            <span class="field-note">Công việc chính.</span>
           </label>
+
           <label>
-            <span class="label-title"> Giờ thức dậy</span>
-            <input
-              type="time"
-              name="wake_time"
-              value="{{ default_input.wake_time }}"
-            />
-            <span class="field-note">Để tính giờ đi ngủ lý tưởng.</span>
-          </label>
-          <label>
-            <span class="label-title"> Tổng thời gian ngủ (giờ)</span>
+            <span class="label-title"> Thời gian ngủ (Sleep Duration)</span>
             <input
               type="number"
               step="0.1"
               min="0"
-              max="12"
-              name="sleep_hours"
-              value="{{ default_input.sleep_hours }}"
+              max="24"
+              name="sleep_duration"
+              value="{{ default_input.sleep_duration }}"
+              placeholder="VD: 6.5"
+              required
             />
-            <span class="field-note">Tổng giờ ngủ trong đêm.</span>
+            <span class="field-note">Tổng số giờ ngủ (giờ).</span>
           </label>
+
           <label>
-            <span class="label-title"> Mục tiêu ngủ (giờ)</span>
-            <input
-              type="number"
-              step="0.1"
-              min="0"
-              max="12"
-              name="target_sleep_hours"
-              value="{{ default_input.target_sleep_hours }}"
-            />
-            <span class="field-note">Mốc chuẩn để tính sleep debt.</span>
-          </label>
-          <label>
-            <span class="label-title"> Deep Sleep (phút)</span>
-            <input
-              type="number"
-              min="0"
-              max="600"
-              name="deep_sleep_minutes"
-              value="{{ default_input.deep_sleep_minutes }}"
-            />
-            <span class="field-note"
-              >Giấc ngủ sâu (60-120 phút/đêm là tốt).</span
-            >
-          </label>
-          <label>
-            <span class="label-title"> REM Sleep (phút)</span>
-            <input
-              type="number"
-              min="0"
-              max="600"
-              name="rem_sleep_minutes"
-              value="{{ default_input.rem_sleep_minutes }}"
-            />
-            <span class="field-note"
-              >Giấc ngủ mơ (80-120 phút/đêm là tốt).</span
-            >
-          </label>
-          <label>
-            <span class="label-title"> Số lần thức giấc</span>
-            <input
-              type="number"
-              min="0"
-              max="20"
-              name="awakenings"
-              value="{{ default_input.awakenings }}"
-            />
-            <span class="field-note">0-2 lần là lý tưởng.</span>
-          </label>
-          <label>
-            <span class="label-title"> HRV (ms)</span>
-            <input
-              type="number"
-              min="0"
-              max="200"
-              name="hrv"
-              value="{{ default_input.hrv }}"
-            />
-            <span class="field-note"
-              >HRV cao = phục hồi tốt (>40ms là tốt).</span
-            >
-          </label>
-          <label>
-            <span class="label-title"> RHR (bpm)</span>
-            <input
-              type="number"
-              min="40"
-              max="100"
-              name="rhr"
-              value="{{ default_input.rhr }}"
-            />
-            <span class="field-note"
-              >Nhịp tim khi ngủ (50-60 là bình thường).</span
-            >
-          </label>
-          <label>
-            <span class="label-title"> Sự kiện giảm SpO2</span>
-            <input
-              type="number"
-              min="0"
-              max="50"
-              name="spo2_drop_events"
-              value="{{ default_input.spo2_drop_events }}"
-            />
-            <span class="field-note"><3 sự kiện là bình thường.</span>
-          </label>
-          <label>
-            <span class="label-title"> Ngày thiếu ngủ liên tiếp</span>
+            <span class="label-title"> Chất lượng giấc ngủ (Quality)</span>
             <input
               type="number"
               min="1"
-              max="30"
-              name="consecutive_days"
-              value="{{ default_input.consecutive_days }}"
+              max="10"
+              name="quality_of_sleep"
+              value="{{ default_input.quality_of_sleep }}"
+              placeholder="Thang điểm 1-10"
+              required
             />
-            <span class="field-note">Để tính tích lũy nợ ngủ.</span>
+            <span class="field-note">Đánh giá chủ quan (1-10).</span>
           </label>
+
+          <label>
+            <span class="label-title"> Mức độ vận động (Physical Activity)</span>
+            <input
+              type="number"
+              min="0"
+              name="physical_activity"
+              value="{{ default_input.physical_activity }}"
+              placeholder="VD: 60"
+              required
+            />
+            <span class="field-note">Thời gian vận động (phút/ngày).</span>
+          </label>
+
+          <label>
+            <span class="label-title"> Mức độ căng thẳng (Stress Level)</span>
+            <input
+              type="number"
+              min="1"
+              max="10"
+              name="stress_level"
+              value="{{ default_input.stress_level }}"
+              placeholder="Thang điểm 1-10"
+              required
+            />
+            <span class="field-note">Cảm nhận stress (1-10).</span>
+          </label>
+
+          <label>
+            <span class="label-title"> Chỉ số BMI (BMI Category)</span>
+            <select name="bmi_category" required>
+              <option value="" disabled selected>Chọn phân loại</option>
+              <option value="Underweight">Thiếu cân (Underweight)</option>
+              <option value="Normal">Bình thường (Normal)</option>
+              <option value="Normal Weight">Bình thường (Normal Weight)</option>
+              <option value="Overweight">Thừa cân (Overweight)</option>
+              <option value="Obese">Béo phì (Obese)</option>
+            </select>
+            <span class="field-note">Tình trạng thể chất.</span>
+          </label>
+
+          <label>
+            <span class="label-title"> Huyết áp (Blood Pressure)</span>
+            <input
+              type="text"
+              name="blood_pressure"
+              value="{{ default_input.blood_pressure }}"
+              placeholder="VD: 120/80"
+              required
+            />
+            <span class="field-note">Tâm thu/Tâm trương.</span>
+          </label>
+
+          <label>
+            <span class="label-title"> Nhịp tim (Heart Rate)</span>
+            <input
+              type="number"
+              min="30"
+              max="200"
+              name="heart_rate"
+              value="{{ default_input.heart_rate }}"
+              placeholder="VD: 70"
+              required
+            />
+            <span class="field-note">Nhịp tim trung bình (bpm).</span>
+          </label>
+
+          <label>
+            <span class="label-title"> Số bước chân (Daily Steps)</span>
+            <input
+              type="number"
+              min="0"
+              name="daily_steps"
+              value="{{ default_input.daily_steps }}"
+              placeholder="VD: 8000"
+              required
+            />
+            <span class="field-note">Số bước đi bộ trong ngày.</span>
+          </label>
+
+          
         </div>
 
         <div class="button-row">
           <button class="button button-primary" type="submit">
             <span>🚀</span> Phân tích ngay
           </button>
-          <a class="button button-secondary" href="{% url 'upload_page' %}">
-            <span>↻</span> Làm lại
-          </a>
+          <button class="button button-secondary" type="reset">
+            <span>↻</span> Làm mới form
+          </button>
         </div>
       </form>
     </div>
@@ -502,16 +524,20 @@ Liệu{% endblock %} {% block content %}
     margin-bottom: 0;
   }
 
-  .form-grid input {
+  /* Đã cập nhật CSS để áp dụng định dạng cho cả thẻ select */
+  .form-grid input,
+  .form-grid select {
     width: 100%;
     padding: 10px 12px;
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
     font-family: inherit;
     font-size: 1rem;
+    background-color: #fff;
   }
 
-  .form-grid input:focus {
+  .form-grid input:focus,
+  .form-grid select:focus {
     outline: none;
     border-color: var(--primary);
     box-shadow: 0 0 0 3px var(--primary-light);
