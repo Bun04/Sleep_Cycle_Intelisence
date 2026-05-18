@@ -86,7 +86,16 @@ def run_dynamic_prediction():
     print(f"[Chỉ số trung bình]: HA: {avg_sys}/{avg_dia} | Ngủ: {avg_sleep:.1f}h | Stress: {avg_stress:.1f} | Vận động: {avg_physical:.1f}")
     print("-" * 75)
 
-    pred_disorder = predict_rf(model_data['rf_disorder'], processed_user, mode='classification')
+    # Prefer KNN classification if available
+    pred_disorder = None
+    if 'knn_disorder' in model_data and model_data['knn_disorder'] is not None:
+        try:
+            pred_disorder = model_data['knn_disorder'].predict_row(processed_user)
+        except Exception:
+            pred_disorder = None
+
+    if pred_disorder is None:
+        pred_disorder = predict_rf(model_data['rf_disorder'], processed_user, mode='classification')
     pred_quality = predict_rf(model_data['rf_quality'], processed_user, mode='regression')
 
     print("1. DỰ ĐOÁN NGUY CƠ BỆNH LÝ (AI CLASSIFICATION):")

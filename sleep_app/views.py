@@ -488,6 +488,30 @@ def _build_prediction_cards(
 def _build_recommendations(*, recovery_score, apnea_label, stress_label, energy_label, sleep_debt_hours, inputs):
     recommendations = []
 
+    # Use RF/KNN model predictions when available to refine recommendations
+    try:
+        # build a minimal row for model prediction
+        deep_pct = 0.0
+        try:
+            total_minutes = max(inputs.get("sleep_hours", 0) * 60.0, 1.0)
+            deep_pct = inputs.get("deep_sleep_minutes", 0) / total_minutes
+        except Exception:
+            deep_pct = 0.0
+
+        model_row = {
+            'Age': inputs.get('age', 40),
+            'Occupation': inputs.get('occupation', ''),
+            'BMI Category': inputs.get('bmi_category', 'Normal'),
+            'Blood Pressure': f"{inputs.get('systolic',120)}/{inputs.get('diastolic',80)}",
+            'Stress Level': recovery_score if recovery_score is not None else inputs.get('hrv', 40),
+            'Physical Activity Level': inputs.get('physical_activity_level', 1.0),
+            'Heart Rate': inputs.get('rhr', 60),
+            'Deep_Sleep': deep_pct,
+        }
+        model_pred = predict_sleep_model_from_csv_row(model_row)
+    except Exception:
+        model_pred = None
+
     if recovery_score < 60:
         recommendations.append("Ưu tiên thêm 45 - 60 phút ngủ trong 2 đêm tới để phục hồi nền.")
     if apnea_label == "Có nguy cơ":
@@ -502,6 +526,21 @@ def _build_recommendations(*, recovery_score, apnea_label, stress_label, energy_
         recommendations.append("Tăng Deep Sleep bằng cách giữ phòng ngủ mát và cố định giờ đi ngủ hằng ngày.")
     if inputs["rem_sleep_minutes"] < 90:
         recommendations.append("Tránh dùng rượu buổi tối vì có thể làm giảm REM và khiến hôm sau kém tỉnh táo.")
+
+    # Add model-based recommendations (random forest outputs)
+    if model_pred:
+        try:
+            sd = model_pred.get('sleep_disorder')
+            q = model_pred.get('quality_of_sleep')
+            hd = model_pred.get('heart_disease')
+            if sd and str(sd).lower() != 'none':
+                recommendations.insert(0, f"AI dự đoán nguy cơ: {sd}. Xem xét đánh giá y tế nếu tiếp diễn.")
+            if q is not None and float(q) < 5.5:
+                recommendations.append("Chất lượng giấc ngủ dự báo thấp — ưu tiên can thiệp hành vi trước (hạn chế thiết bị, ánh sáng, tập thở).")
+            if hd is not None and str(hd).strip().lower() in ['cao', 'high', 'yes', '1', 'true']:
+                recommendations.append("Mô hình ước tính rủi ro tim mạch cao — cân nhắc kiểm tra ECG/TSH/khám tim.")
+        except Exception:
+            pass
 
     return recommendations[:5]
 

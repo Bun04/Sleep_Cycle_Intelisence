@@ -28,6 +28,7 @@ def _to_int(value, default=0):
 def _load_sleep_model():
     import sys
     import core_ml.random_forest as rf
+    import core_ml.knn as knn_module
     sys.modules['__main__'].RandomForest = rf.RandomForest
 
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -42,7 +43,26 @@ def _load_sleep_model():
     except Exception:
         try:
             with open(model_path, 'rb') as f:
-                return pickle.load(f)
+                model = pickle.load(f)
+                # If KNN model not present, try to build a lightweight KNN
+                # from the original dataset file so classification can use KNN.
+                if 'knn_disorder' not in model:
+                    try:
+                        project_root = os.path.dirname(current_dir)
+                        dataset_file = os.path.join(project_root, 'Sleep_health_and_lifestyle_dataset.csv')
+                        if os.path.exists(dataset_file):
+                            dataset, occ_map, bmi_map = rf.load_and_process_csv(dataset_file)
+                            # Build a KNN for disorder classification
+                            features_disorder = [
+                                'Age', 'Occ_Num', 'BMI_Num', 'Systolic', 'Diastolic', 'Stress Level'
+                            ]
+                            knn = knn_module.KNN(k=7)
+                            knn.fit(dataset, features_disorder, 'Sleep Disorder')
+                            model['knn_disorder'] = knn
+                    except Exception:
+                        pass
+
+                return model
         except Exception:
             return None
 
@@ -116,7 +136,7 @@ def _map_row_to_model_features(row, model_data):
             break
 
     deep_sleep = None
-    for key in ['deep sleep', 'deep_sleep', 'n3', 'phút ngủ sâu', 'deep sleep percentage']:
+    for key in ['deep sleep', 'deep_sleep', 'deep_sleep_percentage', 'n3', 'phút ngủ sâu', 'deep sleep percentage']:
         if key in row_lower:
             deep_sleep = _to_float(row_lower[key], None)
             break
@@ -181,6 +201,7 @@ def predict_sleep_model_from_csv_row(row):
         return None
 
     rf_disorder = model_data.get('rf_disorder')
+    knn_disorder = model_data.get('knn_disorder')
     rf_quality = model_data.get('rf_quality')
     rf_heart = model_data.get('rf_heart')
     rf_alzheimer = model_data.get('rf_alzheimer')
@@ -188,7 +209,11 @@ def predict_sleep_model_from_csv_row(row):
     if rf_disorder is None or rf_quality is None or rf_heart is None:
         return None
 
-    raw_sleep_disorder = rf_disorder.predict_row(mapped_row)
+    # Prefer KNN for the evaluation/classification step if available
+    if knn_disorder is not None:
+        raw_sleep_disorder = knn_disorder.predict_row(mapped_row)
+    else:
+        raw_sleep_disorder = rf_disorder.predict_row(mapped_row)
     raw_quality_score = rf_quality.predict_row(mapped_row)
     raw_heart = rf_heart.predict_row(mapped_row)
     raw_alzheimer = None

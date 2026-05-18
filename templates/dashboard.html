@@ -34,7 +34,7 @@ Kết Quả{% endblock %} {% block content %}
       </div>
       {% if analysis.algorithm_used %}
       <div class="status-item moderate">
-        <span class="status-label">🤖 Thuật Toán</span>
+        <span class="status-label"> Thuật Toán</span>
         <span class="status-value">{{ analysis.algorithm_used }}</span>
       </div>
       {% endif %}
@@ -177,6 +177,10 @@ Kết Quả{% endblock %} {% block content %}
           kiểm tra huyết áp.
         </p>
       </div>
+      {% elif analysis.heart_disease_label == "Thấp" or analysis.heart_disease_label == "Low" %}
+      <p class="alert-info">
+        Nguy cơ tim mạch thấp. Mô hình dự đoán sức khỏe tim mạch ổn định.
+      </p>
       {% else %}
       <p class="alert-info">
         Chưa đủ dữ liệu để đưa ra cảnh báo bệnh tim chính xác.
@@ -202,6 +206,10 @@ Kết Quả{% endblock %} {% block content %}
           gia nếu có biểu hiện trí nhớ giảm.
         </p>
       </div>
+      {% elif analysis.alzheimer_risk_label == "Thấp" or analysis.alzheimer_risk_label == "Low" %}
+      <p class="alert-info">
+        Nguy cơ Alzheimer thấp. Mô hình dự đoán mức rủi ro hiện tại ổn định.
+      </p>
       {% else %}
       <p class="alert-info">
         Mô hình hiện tại cần thêm thông tin lâm sàng để dự báo Alzheimer chính

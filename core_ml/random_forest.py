@@ -529,7 +529,7 @@ def split_node(
             )
         )
 
-        # FIX: handle case where no valid split exists for this sub-node
+        #handle case where no valid split exists for this sub-node
         right_split = get_best_split(
             right,
             random_features,
@@ -1185,11 +1185,12 @@ def load_model(filename):
 
 if __name__ == "__main__":
 
-    dataset, occ_map, bmi_map = (
-        load_and_process_csv(
-            "/home/nauq-anh/django_project/Sleep_Cycle/Sleep_health_and_lifestyle_dataset.csv"
-        )
+    import os
+    csv_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "Sleep_health_and_lifestyle_dataset.csv",
     )
+    dataset, occ_map, bmi_map = load_and_process_csv(csv_path)
 
     print(
         "Dataset size:",
@@ -1200,9 +1201,8 @@ if __name__ == "__main__":
         dataset
     )
 
-    # =====================================================
     # CLASSIFICATION
-    # =====================================================
+
 
     features_disorder = [
 
@@ -1261,9 +1261,9 @@ if __name__ == "__main__":
         title="Confusion Matrix - Sleep Disorder"
     )
 
-    # =====================================================
+
     # REGRESSION
-    # =====================================================
+ 
 
     features_quality = [
 
@@ -1308,9 +1308,8 @@ if __name__ == "__main__":
         predicted_reg
     )
 
-    # =====================================================
     # HEART DISEASE ROC
-    # =====================================================
+
 
     heart_features = [
 
@@ -1382,9 +1381,9 @@ if __name__ == "__main__":
         positive_class=1
     )
 
-    # =====================================================
+   
     # ALZHEIMER RISK
-    # =====================================================
+    
 
     features_alzheimer = [
         'Age',
@@ -1426,10 +1425,7 @@ if __name__ == "__main__":
         title="Metrics Summary - Alzheimer Risk"
     )
 
-    # =====================================================
-    # SAVE MODEL
-    # =====================================================
-
+   #save model
     models = {
 
         'rf_disorder': rf_disorder,
