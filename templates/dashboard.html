@@ -87,11 +87,11 @@ Kết Quả{% endblock %} {% block content %}
       </div>
     </article>
 
-    <article class="metric-card">
+    {% comment %} <article class="metric-card">
       <h4>Thuật toán dự đoán</h4>
       <div class="metric-value">{{ analysis.algorithm_used }}</div>
       <p class="metric-detail">Mô hình được dùng để sinh kết quả phân tích.</p>
-    </article>
+    </article> {% endcomment %}
 
     <article class="metric-card">
       <h4>Lần Thức Giấc</h4>

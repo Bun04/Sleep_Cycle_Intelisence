@@ -29,6 +29,7 @@ DEFAULT_INPUT = {
 
 def upload_view(request):
     """Xử lý cả file upload và form input"""
+    import pandas as pd
     context = {
         "default_input": DEFAULT_INPUT,
         "feature_groups": _build_feature_groups(),
@@ -36,76 +37,167 @@ def upload_view(request):
     
     # Xử lý upload file CSV
     if request.method == "POST" and "sleep_data_file" in request.FILES:
+        upload_history = None
         try:
-            csv_file = request.FILES["sleep_data_file"]
+            upload_file = request.FILES["sleep_data_file"]
+            file_name = upload_file.name.lower()
+        
+            # csv_file = request.FILES["sleep_data_file"]
             
-            # Kiểm tra loại file
-            if not csv_file.name.endswith('.csv'):
-                context["upload_error"] = "Vui lòng tải file CSV hợp lệ."
+            if file_name.endswith(".csv"):
+                try:
+                    df = pd.read_csv(upload_file, encoding="utf-8-sig")
+                # Kiểm tra loại file
+                except UnicodeDecodeError:
+                    upload_file.seek(0)
+                    df = pd.read_csv(upload_file, encoding="latin1")
+            elif file_name.endswith(".xlsx") or file_name.endswith(".xls"):
+                df = pd.read_excel(upload_file)
+            else:
+                context["upload_error"] = (
+                    "Chỉ hỗ trợ file CSV hoặc Excel (.xlsx, .xls)"
+                )
                 return render(request, "upload.html", context)
+
+           
+            # Kiểm tra dữ liệu
             
-            # Xử lý CSV
-            stream = io.TextIOWrapper(csv_file.file, encoding='utf-8-sig')
-            csv_reader = csv.DictReader(stream)
-            
-            if not csv_reader.fieldnames:
-                context["upload_error"] = "File CSV không có header row."
+            if df.empty:
+                context["upload_error"] = "File không có dữ liệu."
                 return render(request, "upload.html", context)
-            
-            rows = list(csv_reader)
+
+            # Convert dataframe 
+            rows = df.fillna("").to_dict(orient="records")
+
             if not rows:
-                context["upload_error"] = "File CSV không có dữ liệu."
+                context["upload_error"] = "Không tìm thấy dữ liệu hợp lệ."
                 return render(request, "upload.html", context)
-            
+
+           
             # Lưu lịch sử upload
+            
+
             upload_history = CSVUploadHistory.objects.create(
-                file_name=csv_file.name,
+                file_name=upload_file.name,
                 rows_count=len(rows),
-                columns_count=len(csv_reader.fieldnames),
-                upload_status='processing'
+                columns_count=len(df.columns),
+                upload_status="processing",
             )
+
             
-            # Trích xuất dữ liệu từ dòng đầu tiên
+            # Lấy dòng đầu tiên
+           
+
             first_row = rows[0]
+
             extracted_input = _extract_csv_row(first_row)
+
             model_prediction = predict_sleep_model_from_csv_row(first_row)
-            
-            # Lưu dữ liệu vào database
+
+           
+            # Lưu Sleep Record
+           
+
             sleep_record = SleepRecord.objects.create(
-                user_name=extracted_input.get('user_name', 'CSV Upload'),
-                sleep_hours=extracted_input.get('sleep_hours', 7.0),
-                deep_sleep_minutes=extracted_input.get('deep_sleep_minutes', 90),
-                rem_sleep_minutes=extracted_input.get('rem_sleep_minutes', 100),
-                awakenings=extracted_input.get('awakenings', 2),
-                spo2_drop_events=extracted_input.get('spo2_drop_events', 0),
-                hrv=extracted_input.get('hrv', 50),
-                rhr=extracted_input.get('rhr', 60),
-                consecutive_days=extracted_input.get('consecutive_days', 1),
-                target_sleep_hours=extracted_input.get('target_sleep_hours', 8.0),
+                user_name=extracted_input.get(
+                    "user_name",
+                    "CSV Upload"
+                ),
+
+                sleep_hours=extracted_input.get(
+                    "sleep_hours",
+                    7.0
+                ),
+
+                deep_sleep_minutes=extracted_input.get(
+                    "deep_sleep_minutes",
+                    90
+                ),
+
+                rem_sleep_minutes=extracted_input.get(
+                    "rem_sleep_minutes",
+                    100
+                ),
+
+                awakenings=extracted_input.get(
+                    "awakenings",
+                    2
+                ),
+
+                spo2_drop_events=extracted_input.get(
+                    "spo2_drop_events",
+                    0
+                ),
+
+                hrv=extracted_input.get(
+                    "hrv",
+                    50
+                ),
+
+                rhr=extracted_input.get(
+                    "rhr",
+                    60
+                ),
+
+                consecutive_days=extracted_input.get(
+                    "consecutive_days",
+                    1
+                ),
+
+                target_sleep_hours=extracted_input.get(
+                    "target_sleep_hours",
+                    8.0
+                ),
             )
-            
+
+           
+            # Update upload history
+           
+
             upload_history.processed_rows = len(rows)
-            upload_history.upload_status = 'completed'
+            upload_history.upload_status = "completed"
             upload_history.save()
+
+           
+            # Build preview
             
-            # Xây dựng preview dữ liệu
+
             context["upload_meta"] = {
-                "file_name": csv_file.name,
+                "file_name": upload_file.name,
                 "rows": len(rows),
-                "columns": len(csv_reader.fieldnames)
+                "columns": len(df.columns),
             }
+
             context["data_preview"] = _build_csv_preview(rows[:5])
+
             context["uploaded_input"] = extracted_input
+
             context["missing_columns"] = _get_missing_columns(first_row)
+
             context["model_predictions"] = model_prediction
-            
+
+            context["upload_success"] = (
+                f"Upload thành công {len(rows)} dòng dữ liệu."
+            )
+
         except Exception as e:
-            context["upload_error"] = f"Lỗi xử lý file: {str(e)}"
-            upload_history.upload_status = 'failed'
-            upload_history.error_message = str(e)
-            upload_history.save()
-    
-    return render(request, "upload.html", context)
+
+            error_message = str(e)
+
+            context["upload_error"] = (
+                f"Lỗi xử lý file: {error_message}"
+            )
+
+            print("UPLOAD ERROR:", error_message)
+
+            # Chỉ save nếu upload_history tồn tại
+            if upload_history:
+
+                upload_history.upload_status = "failed"
+                upload_history.error_message = error_message
+                upload_history.save()
+
+        return render(request, "upload.html", context)
 
 
 def dashboard_view(request):
@@ -631,7 +723,7 @@ def _clamp(value, min_value, max_value):
     return max(min_value, min(max_value, value))
 
 
-# ============= CSV Processing Functions =============
+
 
 def _extract_csv_row(row):
     """
@@ -771,12 +863,12 @@ def _select_algorithm(inputs):
     
     # Chọn thuật toán
     if complexity < 20:
-        algorithm = "Linear Regression"
+        algorithm = "KNN"
     elif complexity < 50:
         algorithm = "Logistic Regression"
     elif apnea_risk > 50 or stress_level > 70:
         algorithm = "Random Forest"
     else:
-        algorithm = "KNN"
+        algorithm = "Linear Regression"
     
     return algorithm

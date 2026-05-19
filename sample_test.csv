@@ -1,8 +1,8 @@
-Name,Gender,Age,Occupation,Sleep Duration,Quality of Sleep,Physical Activity Level,Stress Level,BMI Category,Blood Pressure,Heart Rate,Daily Steps,Sleep Disorder,Smoker,Stroke_History,Deep_Sleep_Percentage,Heart_Disease
-Nguyen Van A,Male,30,Software Engineer,6.5,6,40,7,Overweight,135/85,75,5000,None,1,0,0.14,No
-Nguyen Van A,Male,30,Software Engineer,5.0,4,30,8,Overweight,140/90,80,3000,Insomnia,1,0,0.08,No
-Nguyen Van A,Male,30,Software Engineer,7.0,7,50,6,Overweight,130/80,72,6000,None,1,0,0.18,No
-Nguyen Van A,Male,30,Software Engineer,6.0,5,40,7,Overweight,135/85,76,5500,None,1,0,0.13,No
-Nguyen Van A,Male,30,Software Engineer,5.5,4,35,8,Overweight,138/88,78,4000,Insomnia,1,0,0.09,No
-Nguyen Van A,Male,30,Software Engineer,8.0,8,60,5,Overweight,125/80,70,8000,None,1,0,0.22,No
-Nguyen Van A,Male,30,Software Engineer,7.5,7,55,5,Overweight,128/82,71,7000,None,1,0,0.19,No
+Name,Gender,Age,Occupation,Sleep Duration,Quality of Sleep,Physical Activity Level,Stress Level,BMI Category,Blood Pressure,Heart Rate,Daily Steps,Sleep Disorder,Smoker,Stroke_History,Deep_Sleep_Percentage,Heart_Disease,Family_History_Alzheimer,Cognitive_Score,Memory_Test_Score,Alzheimer_Risk
+Nguyen Van A,Male,30,Software Engineer,6.5,6,40,7,Overweight,135/85,75,5000,None,1,0,0.14,No,No,27.3,9.3,0
+Nguyen Van A,Male,30,Software Engineer,5.0,4,30,8,Overweight,140/90,80,3000,Insomnia,1,0,0.08,No,No,23.8,6.1,0
+Nguyen Van A,Male,30,Software Engineer,7.0,7,50,6,Overweight,130/80,72,6000,None,1,0,0.18,No,No,28.7,10,0
+Nguyen Van A,Male,30,Software Engineer,6.0,5,40,7,Overweight,135/85,76,5500,None,1,0,0.13,No,Yes,25.8,10.0,0
+Nguyen Van A,Male,30,Software Engineer,5.5,4,35,8,Overweight,138/88,78,4000,Insomnia,1,0,0.09,No,Yes,24.9,9.9,0
+Nguyen Van A,Male,30,Software Engineer,8.0,8,60,5,Overweight,125/80,70,8000,None,1,0,0.22,No,No,25.7,7.4,0
+Nguyen Van A,Male,30,Software Engineer,7.5,7,55,5,Overweight,128/82,71,7000,None,1,0,0.19,No,Yes,28.8,7.9,0

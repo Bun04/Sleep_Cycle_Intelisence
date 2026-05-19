@@ -144,7 +144,7 @@ Liệu{% endblock %} {% block content %}
       </div>
       {% elif upload_meta and uploaded_input and not model_predictions %}
       <div class="status-block warning-block push-up-md">
-        <span class="status-icon">⚠️</span>
+        <span class="status-icon">Cảnh báo</span>
         <div>
           <strong>Không thể dùng mô hình sleep_model.pkl</strong>
           <p>File CSV thiếu các trường cần thiết để chạy Random Forest.</p>
@@ -196,7 +196,7 @@ Liệu{% endblock %} {% block content %}
           />
           {% endif %} {% endif %}
           <button class="button button-secondary" type="submit">
-            <span>🚀</span> Phân tích dòng đầu tiên từ CSV
+            <span></span> Phân tích dòng đầu tiên từ CSV
           </button>
         </form>
       </div>
