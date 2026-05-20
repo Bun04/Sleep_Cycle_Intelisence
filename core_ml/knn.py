@@ -3,9 +3,7 @@ import math
 import os
 from django.conf import settings
 
-# =========================================================
-# CÁC HÀM TOÁN HỌC TỰ VIẾT (THAY THẾ SCIKIT-LEARN)
-# =========================================================
+
 
 def calculate_mean(data):
     """Tính giá trị trung bình (Mean)"""

@@ -7,14 +7,18 @@ from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.contrib import messages
 
-from core_ml.sleep_dept_logic import predict_sleep_cycles
+from core_ml.sleep_dept_logic import predict_sleep_cycles, predict_sleep_model_from_csv_row
+from core_ml.knn import predict_sleep_quality_knn
 from .models import SleepRecord, CSVUploadHistory
 
 
 DEFAULT_INPUT = {
-    
     "user_name": "Người dùng",
+    "age": 30,
+    "gender": "Male",
+    "occupation": "Nhân viên",
     "sleep_hours": 6.7,
+    "sleep_duration": 6.7,
     "deep_sleep_minutes": 82,
     "rem_sleep_minutes": 96,
     "awakenings": 4,
@@ -24,6 +28,13 @@ DEFAULT_INPUT = {
     "consecutive_days": 5,
     "target_sleep_hours": 8.0,
     "wake_time": "06:30",
+    "quality_of_sleep": 7,
+    "physical_activity": 60,
+    "stress_level": 5,
+    "bmi_category": "Normal",
+    "blood_pressure": "120/80",
+    "heart_rate": 70,
+    "daily_steps": 8000,
     "spo2_min": 89,  # 95 - 3*2
 }
 
@@ -101,13 +112,14 @@ def upload_view(request):
             extracted_input = _extract_csv_row(first_row)
 
             # =========================
-            # ANALYSIS
+            # ALGORITHM AND MODEL PREDICTIONS
             # =========================
 
+            knn_result = predict_sleep_quality_knn(extracted_input)
+            model_predictions = predict_sleep_model_from_csv_row(extracted_input)
+
             analysis = _analyze_sleep(extracted_input)
-
-            selected_algorithm = _select_algorithm(extracted_input)
-
+            selected_algorithm = "KNN"
             analysis["algorithm_used"] = selected_algorithm
 
             # =========================
@@ -191,10 +203,15 @@ def upload_view(request):
             )
 
             context["analysis"] = analysis
-
-            context["selected_algorithm"] = (
-                selected_algorithm
-            )
+            context["knn_result"] = knn_result or {
+                "label": "None",
+                "insomnia_prob": 0,
+                "apnea_prob": 0,
+                "none_prob": 100,
+                "score": 100,
+            }
+            context["model_predictions"] = model_predictions
+            context["selected_algorithm"] = selected_algorithm
 
             context["upload_success"] = (
                 f"Upload thành công {len(rows)} dòng dữ liệu."
@@ -214,12 +231,45 @@ def upload_view(request):
     return render(request, "upload.html", context)
 def dashboard_view(request):
     inputs = _extract_inputs(request)
-    
+    model_predictions = _extract_model_predictions(request)
+    if model_predictions is None:
+        model_predictions = predict_sleep_model_from_csv_row(inputs)
+
     # Tự động chọn thuật toán dựa trên dữ liệu
     selected_algorithm = _select_algorithm(inputs)
     
     analysis = _analyze_sleep(inputs)
-    analysis['algorithm_used'] = selected_algorithm
+    if model_predictions:
+        analysis['algorithm_used'] = 'Random Forest'
+        analysis['heart_disease_label'] = model_predictions.get('heart_disease')
+        analysis['heart_disease_tone'] = 'risk' if str(model_predictions.get('heart_disease', '')).strip().lower() in ('cao', 'high', 'positive', 'yes') else 'good'
+        analysis['heart_disease_score'] = 90 if analysis['heart_disease_tone'] == 'risk' else 20
+        analysis['alzheimer_risk_label'] = model_predictions.get('alzheimer_risk')
+        if analysis['alzheimer_risk_label'] is not None:
+            analysis['alzheimer_risk_tone'] = 'risk' if str(analysis['alzheimer_risk_label']).strip().lower() in ('cao', 'high', 'positive', 'yes') else 'good'
+            analysis['alzheimer_risk_score'] = 88 if analysis['alzheimer_risk_tone'] == 'risk' else 18
+        else:
+            analysis['alzheimer_risk_tone'] = 'moderate'
+            analysis['alzheimer_risk_score'] = 0
+    else:
+        analysis['algorithm_used'] = selected_algorithm
+        analysis['heart_disease_label'] = None
+        analysis['heart_disease_tone'] = 'moderate'
+        analysis['heart_disease_score'] = 0
+        analysis['alzheimer_risk_label'] = None
+        analysis['alzheimer_risk_tone'] = 'moderate'
+        analysis['alzheimer_risk_score'] = 0
+
+    use_knn = request.method == 'POST' and request.POST.get('source') == 'csv'
+    knn_result = predict_sleep_quality_knn(inputs) if use_knn else None
+    if use_knn and not knn_result:
+        knn_result = {
+            "insomnia_prob": 0,
+            "apnea_prob": 0,
+            "none_prob": 100,
+            "label": "None",
+            "score": 100,
+        }
     
     # Lưu kết quả vào database nếu là request POST
     if request.method == "POST":
@@ -237,7 +287,7 @@ def dashboard_view(request):
                 target_sleep_hours=inputs.get('target_sleep_hours'),
                 quality_label=analysis.get('quality_label'),
                 recovery_score=analysis.get('recovery_score'),
-                algorithm_used="Random Forest & KNN"
+                algorithm_used=analysis.get('algorithm_used', 'Random Forest')
             )
         except Exception as e:
             print(f"Error saving sleep record: {e}")
@@ -245,7 +295,8 @@ def dashboard_view(request):
     context = {
         "inputs": inputs,
         "analysis": analysis,
-        # "knn_result": knn_result, # Trả kết quả KNN ra Dashboard
+        "knn_result": knn_result,
+        "model_predictions": model_predictions,
         "feature_groups": _build_feature_groups(),
     }
     return render(request, "dashboard.html", context)
@@ -258,7 +309,11 @@ def _extract_inputs(request):
 
     inputs = {
         "user_name": request.POST.get("user_name", "").strip() or "Người dùng",
+        "age": _to_int(request.POST.get("age"), DEFAULT_INPUT["age"]),
+        "gender": request.POST.get("gender", DEFAULT_INPUT["gender"]).strip() or DEFAULT_INPUT["gender"],
+        "occupation": request.POST.get("occupation", DEFAULT_INPUT["occupation"]).strip() or DEFAULT_INPUT["occupation"],
         "sleep_hours": _to_float(request.POST.get("sleep_hours") or request.POST.get("sleep_duration"), DEFAULT_INPUT["sleep_hours"]),
+        "sleep_duration": _to_float(request.POST.get("sleep_duration") or request.POST.get("sleep_hours"), DEFAULT_INPUT["sleep_duration"]),
         "deep_sleep_minutes": _to_int(request.POST.get("deep_sleep_minutes"), DEFAULT_INPUT["deep_sleep_minutes"]),
         "rem_sleep_minutes": _to_int(request.POST.get("rem_sleep_minutes"), DEFAULT_INPUT["rem_sleep_minutes"]),
         "awakenings": _to_int(request.POST.get("awakenings"), DEFAULT_INPUT["awakenings"]),
@@ -268,6 +323,13 @@ def _extract_inputs(request):
         "consecutive_days": _to_int(request.POST.get("consecutive_days"), DEFAULT_INPUT["consecutive_days"]),
         "target_sleep_hours": _to_float(request.POST.get("target_sleep_hours"), DEFAULT_INPUT["target_sleep_hours"]),
         "wake_time": request.POST.get("wake_time", DEFAULT_INPUT["wake_time"]).strip() or DEFAULT_INPUT["wake_time"],
+        "quality_of_sleep": _to_int(request.POST.get("quality_of_sleep"), DEFAULT_INPUT["quality_of_sleep"]),
+        "physical_activity": _to_int(request.POST.get("physical_activity"), DEFAULT_INPUT["physical_activity"]),
+        "stress_level": _to_int(request.POST.get("stress_level"), DEFAULT_INPUT["stress_level"]),
+        "bmi_category": request.POST.get("bmi_category", DEFAULT_INPUT["bmi_category"]).strip() or DEFAULT_INPUT["bmi_category"],
+        "blood_pressure": request.POST.get("blood_pressure", DEFAULT_INPUT["blood_pressure"]).strip() or DEFAULT_INPUT["blood_pressure"],
+        "heart_rate": _to_int(request.POST.get("heart_rate"), DEFAULT_INPUT["heart_rate"]),
+        "daily_steps": _to_int(request.POST.get("daily_steps"), DEFAULT_INPUT["daily_steps"]),
     }
     
     # Add computed spo2_min field for dashboard display
@@ -390,6 +452,12 @@ def _analyze_sleep(inputs):
         "stress_label": stress_label,
         "stress_tone": stress_tone,
         "stress_score": round(stress_score),
+        "heart_disease_label": heart_disease_label,
+        "heart_disease_tone": heart_disease_tone,
+        "heart_disease_score": heart_disease_score,
+        "alzheimer_risk_label": alzheimer_risk_label,
+        "alzheimer_risk_tone": alzheimer_risk_tone,
+        "alzheimer_risk_score": alzheimer_risk_score,
         "energy_label": energy_label,
         "energy_tone": energy_tone,
         "energy_score": energy_score,
@@ -663,6 +731,7 @@ def _extract_csv_row(row):
     """
     # Mapping các tên cột có thể có
     column_mappings = {
+        'user_name': ['user_name', 'name', 'tên người dùng', 'tên'],
         'sleep_hours': ['sleep hours', 'hours', 'thời gian ngủ', 'tổng giờ ngủ'],
         'deep_sleep_minutes': ['deep sleep', 'deep', 'n3', 'deep sleep minutes', 'phút ngủ sâu'],
         'rem_sleep_minutes': ['rem sleep', 'rem', 'rem sleep minutes', 'phút rem'],
@@ -670,6 +739,19 @@ def _extract_csv_row(row):
         'spo2_drop_events': ['spo2 drop', 'spo2 events', 'spo2 drop events', 'sự kiện spo2'],
         'hrv': ['hrv', 'heart rate variability'],
         'rhr': ['rhr', 'resting heart rate', 'nhịp tim'],
+        'quality_of_sleep': ['quality of sleep', 'sleep quality', 'quality', 'sleep_quality', 'điểm chất lượng'],
+        'physical_activity': ['physical activity', 'physical activity level', 'activity level', 'daily activity', 'hoạt động'],
+        'stress_level': ['stress level', 'stress', 'stress_score', 'stress level'],
+        'bmi_category': ['bmi category', 'bmi', 'bmi_category'],
+        'blood_pressure': ['blood pressure', 'bp', 'blood_pressure', 'huyết áp'],
+        'heart_rate': ['heart rate', 'hr', 'pulse', 'nhịp tim'],
+        'daily_steps': ['daily steps', 'steps', 'step count', 'bước đi'],
+        'age': ['age', 'tuổi', 'age_years', 'năm'],
+        'occupation': ['occupation', 'job', 'nghề nghiệp', 'profession'],
+        'gender': ['gender', 'giới tính', 'sex'],
+        'target_sleep_hours': ['target sleep hours', 'target_sleep_hours', 'mục tiêu ngủ', 'giờ ngủ mục tiêu'],
+        'consecutive_days': ['consecutive days', 'days in a row', 'liên tiếp', 'số ngày liên tiếp'],
+        'wake_time': ['wake time', 'wake_time', 'giờ thức dậy'],
     }
     
     # Chuyển tất cả keys thành lowercase để so sánh
@@ -700,11 +782,17 @@ def _extract_csv_row(row):
                     value = row_lower[alias.lower()]
                     if field in ['sleep_hours', 'target_sleep_hours']:
                         extracted[field] = _to_float(value, DEFAULT_INPUT[field])
+                    elif field in ['blood_pressure', 'wake_time', 'bmi_category', 'gender', 'occupation']:
+                        extracted[field] = str(value).strip()
                     else:
                         extracted[field] = _to_int(value, DEFAULT_INPUT[field])
                 except:
                     pass
     
+    # Ensure sleep_duration is populated for KNN input
+    if extracted['sleep_duration'] == DEFAULT_INPUT['sleep_duration']:
+        extracted['sleep_duration'] = extracted['sleep_hours']
+
     # Calculate spo2_min
     extracted["spo2_min"] = max(75, 95 - extracted["spo2_drop_events"] * 2)
     

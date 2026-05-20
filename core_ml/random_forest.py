@@ -68,7 +68,7 @@ def load_and_process_csv(filename):
                 deep_sleep = safe_float(
                     row.get(
                         'Deep_Sleep_Percentage',
-                        0.2
+                        15
                     )
                 )
 
@@ -77,21 +77,24 @@ def load_and_process_csv(filename):
                     'No'
                 ) == 'Yes' else 0
 
-                # Alzheimer heuristic
-                if (
-                    age > 50 and
-                    (
-                        deep_sleep < 0.15 or
-                        stress > 7 or
-                        sleep_quality < 5
-                    )
-                ):
+                # Alzheimer: đọc nhãn thật từ dataset
+                # (cột Alzheimer_Risk được sinh sẵn trong CSV)
+                alzheimer_label = safe_int(
+                    row.get('Alzheimer_Risk', 0)
+                )
 
-                    alzheimer_label = 1
+                # 3 cột mới cho Alzheimer
+                family_history = 1 if row.get(
+                    'Family_History_Alzheimer', 'No'
+                ) == 'Yes' else 0
 
-                else:
+                cognitive_score = safe_float(
+                    row.get('Cognitive_Score', 25.0)
+                )
 
-                    alzheimer_label = 0
+                memory_score = safe_float(
+                    row.get('Memory_Test_Score', 7.0)
+                )
 
                 processed = {
 
@@ -146,6 +149,16 @@ def load_and_process_csv(filename):
 
                     'Heart_Disease':
                         heart_label,
+
+                    # Alzheimer features
+                    'Family_History_Alzheimer':
+                        family_history,
+
+                    'Cognitive_Score':
+                        cognitive_score,
+
+                    'Memory_Test_Score':
+                        memory_score,
 
                     'Alzheimer_Risk':
                         alzheimer_label
@@ -1188,7 +1201,7 @@ if __name__ == "__main__":
     import os
     csv_path = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        "Sleep_health_and_lifestyle_dataset.csv",
+        "Sleep_health_with_dataset.csv",
     )
     dataset, occ_map, bmi_map = load_and_process_csv(csv_path)
 
@@ -1383,26 +1396,64 @@ if __name__ == "__main__":
 
    
     # ALZHEIMER RISK
-    
 
     features_alzheimer = [
+        'Family_History_Alzheimer',
+        'Cognitive_Score',
+        'Memory_Test_Score',
         'Age',
-        'Physical Activity Level',
         'Stress Level',
-        'Heart Rate',
-        'Deep_Sleep'
+        'Deep_Sleep',
+        'Quality of Sleep',
     ]
 
+    # Oversampling: nhân bản class 1 để cân bằng tỉ lệ ~1:2
+    def oversample_minority(data, target, ratio=2):
+        """
+        Nhân bản các ca minority (label=1) cho đến khi
+        tỉ lệ majority/minority <= ratio.
+        Chỉ áp dụng trên train_set, không chạm test_set.
+        """
+        majority = [r for r in data if r[target] == 0]
+        minority = [r for r in data if r[target] == 1]
+
+        if len(minority) == 0:
+            return data
+
+        target_count = len(majority) // ratio
+
+        while len(minority) < target_count:
+            minority += minority
+
+        minority = minority[:target_count]
+
+        balanced = majority + minority
+        random.shuffle(balanced)
+
+        print(
+            f"Oversample: class0={len(majority)} "
+            f"class1={len(minority)} "
+            f"total={len(balanced)}"
+        )
+
+        return balanced
+
+    train_alzheimer = oversample_minority(
+        train_set,
+        'Alzheimer_Risk',
+        ratio=2
+    )
+
     rf_alzheimer = RandomForest(
-        n_trees=10,
-        max_depth=6,
+        n_trees=15,
+        max_depth=8,
         min_size=2,
         sample_size=0.8,
         mode='classification'
     )
 
     rf_alzheimer.fit(
-        train_set,
+        train_alzheimer,
         features_alzheimer,
         'Alzheimer_Risk'
     )
@@ -1412,7 +1463,18 @@ if __name__ == "__main__":
         for row in test_set
     ]
 
-    predicted_alzheimer = rf_alzheimer.predict(test_set)
+    probs_alzheimer = [
+        rf_alzheimer.predict_probability(
+            row,
+            positive_class=1
+        )
+        for row in test_set
+    ]
+
+    predicted_alzheimer = [
+        1 if p >= 0.4 else 0
+        for p in probs_alzheimer
+    ]
 
     acc_alzheimer, metrics_alzheimer = classification_metrics(
         actual_alzheimer,
@@ -1423,6 +1485,18 @@ if __name__ == "__main__":
         metrics_alzheimer,
         acc_alzheimer,
         title="Metrics Summary - Alzheimer Risk"
+    )
+
+    plot_confusion_matrix(
+        actual_alzheimer,
+        predicted_alzheimer,
+        title="Confusion Matrix - Alzheimer Risk"
+    )
+
+    plot_roc_curve(
+        actual_alzheimer,
+        probs_alzheimer,
+        positive_class=1
     )
 
    #save model

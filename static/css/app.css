@@ -246,6 +246,19 @@ p {
     align-items: center;
 }
 
+.algorithm-note {
+    margin-top: 20px;
+    padding: 18px 20px;
+    border-radius: var(--radius-md);
+    background: rgba(13, 126, 119, 0.08);
+    border: 1px solid rgba(13, 126, 119, 0.18);
+}
+
+.algorithm-note p {
+    margin: 0;
+    color: var(--muted);
+}
+
 .score-display {
     display: flex;
     justify-content: center;
@@ -346,6 +359,19 @@ p {
     letter-spacing: 0.05em;
 }
 
+.metric-icon {
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+.meter-bar.compact {
+    height: 12px;
+    background: #eee;
+    border-radius: 6px;
+    overflow: hidden;
+    margin-top: 15px;
+}
+
 .metric-value {
     font-size: 2rem;
     font-weight: 700;
@@ -376,6 +402,18 @@ p {
     border-radius: inherit;
     background: linear-gradient(90deg, var(--primary) 0%, var(--primary) 100%);
     transition: width 600ms ease-out;
+}
+
+.meter-fill.warning {
+    background: #ffcc00;
+}
+
+.meter-fill.risk {
+    background: #ff4d4d;
+}
+
+.meter-fill.good {
+    background: #2ecc71;
 }
 
 /* Alerts Grid */

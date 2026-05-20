@@ -115,34 +115,39 @@
         </p>
         {{ data_preview|safe }}
       </div>
-      {% endif %} {% if model_predictions %}
-      {% comment %} <div class="status-block info-block push-up-md">
+      {% endif %}
+
+      {% if knn_result %}
+      <div class="status-block info-block push-up-md">
         <span class="status-icon">🤖</span>
         <div>
-          <strong>Mô hình backend</strong>
-          <p>Predict từ <code>{{ model_predictions.model_file }}</code></p>
+          <strong>Phân tích KNN cho CSV</strong>
+          <p>Chức năng 1: phân loại giấc ngủ bằng KNN.</p>
           <ul class="model-summary">
-            <li>
-              <strong>Nguy cơ rối loạn giấc ngủ:</strong> {{
-              model_predictions.sleep_disorder }}
-            </li>
-            <li>
-              <strong>Quality score:</strong> {{
-              model_predictions.quality_of_sleep }}
-            </li>
-            <li>
-              <strong>Rủi ro bệnh tim:</strong> {{
-              model_predictions.heart_disease }}
-            </li>
-            <li>
-              <strong>Nguy cơ Alzheimer:</strong>
-              {% if model_predictions.alzheimer_risk is not None %} {{
-              model_predictions.alzheimer_risk }} {% else %} Chưa có {% endif %}
-            </li>
+            <li><strong>Sleep Disorder:</strong> {{ knn_result.label }}</li>
+            <li><strong>Insomnia:</strong> {{ knn_result.insomnia_prob }}%</li>
+            <li><strong>Sleep Apnea:</strong> {{ knn_result.apnea_prob }}%</li>
+            <li><strong>Bình thường:</strong> {{ knn_result.none_prob }}%</li>
           </ul>
         </div>
-      </div> {% endcomment %}
-      {% elif upload_meta and uploaded_input and not model_predictions %}
+      </div>
+      {% endif %}
+
+      {% if model_predictions %}
+      <div class="status-block info-block push-up-md">
+        <span class="status-icon">🧠</span>
+        <div>
+          <strong>Dự đoán bệnh bằng Random Forest</strong>
+          <p>Chức năng 2: dự đoán nguy cơ bệnh tim và Alzheimer.</p>
+          <ul class="model-summary">
+            <li><strong>Nguy cơ tim mạch:</strong> {{ model_predictions.heart_disease }}</li>
+            <li><strong>Nguy cơ Alzheimer:</strong> {{ model_predictions.alzheimer_risk|default:'Chưa có' }}</li>
+            <li><strong>Quality score:</strong> {{ model_predictions.quality_of_sleep|default:'Chưa có' }}</li>
+          </ul>
+        </div>
+      </div>
+      {% endif %}
+      {% if upload_meta and uploaded_input and not model_predictions %}
       <div class="status-block warning-block push-up-md">
         <span class="status-icon">Cảnh báo</span>
         <div>
@@ -169,9 +174,12 @@
           action="{% url 'dashboard_page' %}"
           class="inline-form"
         >
-          {% csrf_token %} {% for key, value in uploaded_input.items %}
+          {% csrf_token %}
+        <input type="hidden" name="source" value="csv" />
+        {% for key, value in uploaded_input.items %}
           <input type="hidden" name="{{ key }}" value="{{ value }}" />
-          {% endfor %} {% if model_predictions %}
+        {% endfor %}
+        {% if model_predictions %}
           <input
             type="hidden"
             name="model_sleep_disorder"
@@ -188,13 +196,15 @@
             name="model_heart_disease"
             value="{{ model_predictions.heart_disease }}"
           />
-          {% endif %} {% if model_predictions.alzheimer_risk is not None %}
+          {% endif %}
+          {% if model_predictions.alzheimer_risk is not None %}
           <input
             type="hidden"
             name="model_alzheimer_risk"
             value="{{ model_predictions.alzheimer_risk }}"
           />
-          {% endif %} {% endif %}
+          {% endif %}
+        {% endif %}
           <button class="button button-secondary" type="submit">
             <span></span> Phân tích dòng đầu tiên từ CSV
           </button>
