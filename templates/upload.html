@@ -116,7 +116,7 @@ Liệu{% endblock %} {% block content %}
         {{ data_preview|safe }}
       </div>
       {% endif %} {% if model_predictions %}
-      <div class="status-block info-block push-up-md">
+      {% comment %} <div class="status-block info-block push-up-md">
         <span class="status-icon">🤖</span>
         <div>
           <strong>Mô hình backend</strong>
@@ -141,7 +141,7 @@ Liệu{% endblock %} {% block content %}
             </li>
           </ul>
         </div>
-      </div>
+      </div> {% endcomment %}
       {% elif upload_meta and uploaded_input and not model_predictions %}
       <div class="status-block warning-block push-up-md">
         <span class="status-icon">Cảnh báo</span>

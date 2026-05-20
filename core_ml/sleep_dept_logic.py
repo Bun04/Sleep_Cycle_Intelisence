@@ -175,6 +175,19 @@ def _map_row_to_model_features(row, model_data):
             else:
                 stroke = _to_int(row_lower[key], 0)
             break
+        
+        
+    # history_family_alzheimer = 0
+    # for key in ['family_alzheimer','Người nhà bệnh','family_history_alzheimer']:
+    #     if key in row_lower:
+    #         val = str(row_lower[key]).strip().lower()
+    #         if val in ['yes','y','1','có', 'bị','tre']:
+    #               history_family_alzheimer = 1
+    #         elif val in ['no', 'n', '0', 'false', 'không']:
+    #               history_family_alzheimer = 0
+    #         else:
+    #             history_family_alzheimer = _to_int(row_lower[key],0)
+    #         break
 
     return {
         'Age': age,
