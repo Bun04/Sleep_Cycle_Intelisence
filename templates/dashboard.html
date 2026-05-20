@@ -46,10 +46,27 @@ Kết Quả{% endblock %} {% block content %}
         phức tạp cao và cần dự đoán nhiều chỉ số đồng thời.
       </p>
     </div>
+</section>
+
+<section class="section">
+    <div class="section-header">
+        <h2>📊 Chẩn Đoán & Phân Loại rủi ro (AI KNN)</h2>
+        <p class="section-subtitle">Dựa trên đối chiếu hồ sơ sức khỏe với cộng đồng (Peer Benchmarking)</p>
+    </div>
     {% endif %}
     <p class="section-subtitle">Phân tích chất lượng giấc ngủ tổng thể</p>
   </div>
 
+    <div class="metrics-grid" style="grid-template-columns: repeat(3, 1fr); gap: 25px;">
+        <article class="metric-card {% if knn_result.insomnia_prob > 50 %}risk{% endif %}">
+            <div class="metric-icon" style="font-size: 24px; margin-bottom: 10px;">📋</div>
+            <h4>Xác suất Mất ngủ</h4>
+            <div class="metric-value">{{ knn_result.insomnia_prob }}%</div>
+            <p class="metric-detail">(Insomnia)</p>
+            <div class="meter-bar" style="height: 12px; background: #eee; border-radius: 6px; overflow: hidden; margin-top: 15px;">
+                <span class="meter-fill" style="display: block; height: 100%; width: {{ knn_result.insomnia_prob }}%; background: {% if knn_result.insomnia_prob > 50 %}#ff4d4d{% else %}#ffcc00{% endif %}; transition: width 1s;"></span>
+            </div>
+        </article>
   <div class="metrics-grid">
     <article class="metric-card">
       <h4>Tổng Thời Gian Ngủ</h4>
@@ -57,6 +74,15 @@ Kết Quả{% endblock %} {% block content %}
       <p class="metric-detail">Thời gian ngủ thực tế trong đêm qua</p>
     </article>
 
+        <article class="metric-card {% if knn_result.apnea_prob > 50 %}risk{% endif %}">
+            <div class="metric-icon" style="font-size: 24px; margin-bottom: 10px;">🫁</div>
+            <h4>Xác suất Sleep Apnea</h4>
+            <div class="metric-value">{{ knn_result.apnea_prob }}%</div>
+            <p class="metric-detail">(Ngưng thở khi ngủ)</p>
+            <div class="meter-bar" style="height: 12px; background: #eee; border-radius: 6px; overflow: hidden; margin-top: 15px;">
+                <span class="meter-fill" style="display: block; height: 100%; width: {{ knn_result.apnea_prob }}%; background: {% if knn_result.apnea_prob > 50 %}#ff4d4d{% else %}#ffcc00{% endif %}; transition: width 1s;"></span>
+            </div>
+        </article>
     <article class="metric-card">
       <h4>Deep Sleep (N3)</h4>
       <div class="metric-value">{{ analysis.deep_ratio }}%</div>
@@ -66,6 +92,16 @@ Kết Quả{% endblock %} {% block content %}
       </div>
     </article>
 
+        <article class="metric-card {% if knn_result.none_prob > 50 %}good{% endif %}">
+            <div class="metric-icon" style="font-size: 24px; margin-bottom: 10px;">✅</div>
+            <h4>Xác suất Bình thường</h4>
+            <div class="metric-value">{{ knn_result.none_prob }}%</div>
+            <p class="metric-detail">(Sức khỏe ổn định)</p>
+            <div class="meter-bar" style="height: 12px; background: #eee; border-radius: 6px; overflow: hidden; margin-top: 15px;">
+                <span class="meter-fill" style="display: block; height: 100%; width: {{ knn_result.none_prob }}%; background: #2ecc71; transition: width 1s;"></span>
+            </div>
+        </article>
+    </div>
     <article class="metric-card">
       <h4>REM Sleep</h4>
       <div class="metric-value">{{ analysis.rem_ratio }}%</div>
@@ -109,7 +145,6 @@ Kết Quả{% endblock %} {% block content %}
     </article>
   </div>
 </section>
-
 <!-- Group 2: Cảnh Báo Rủi Ro -->
 <section class="section">
   <div class="section-header">

@@ -81,7 +81,7 @@ def load_and_process_csv(filename):
                 if (
                     age > 50 and
                     (
-                        deep_sleep < 15 or
+                        deep_sleep < 0.15 or
                         stress > 7 or
                         sleep_quality < 5
                     )
