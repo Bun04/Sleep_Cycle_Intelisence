@@ -1,10 +1,12 @@
-{% extends "base.html" %} {% block title %}Sleep Cycle Intelligence | Phân Tích
-Kết Quả{% endblock %} {% block content %}
+{% extends "base.html" %} 
+{% block title %}Sleep Cycle Intelligence | Bảng Điều Khiển{% endblock %} 
+{% block content %}
+
 <!-- Hero Section -->
 <section class="hero dashboard-hero">
   <div class="hero-top">
-    <span class="eyebrow">Kết Quả Phân Tích</span>
-    <h1>Đêm ngủ của {{ inputs.user_name }}</h1>
+    <span class="eyebrow">Bảng Điều Khiển Phân Tích</span>
+    <h1>Báo cáo của {{ inputs.user_name }}</h1>
   </div>
 
   <div class="recovery-highlight">
@@ -33,148 +35,94 @@ Kết Quả{% endblock %} {% block content %}
         <span class="status-value">{{ analysis.apnea_label }}</span>
       </div>
       {% if analysis.algorithm_used %}
-      <div class="status-item moderate">
+      {% comment %} <div class="status-item moderate">
         <span class="status-label"> Thuật Toán</span>
         <span class="status-value">{{ analysis.algorithm_used }}</span>
-      </div>
+      </div> {% endcomment %}
       {% endif %}
     </div>
     {% if analysis.algorithm_used == "Random Forest" %}
     <div class="algorithm-note">
-      <p>
+      {% comment %} <p>
         <strong>Random Forest</strong> được chọn để phân tích khi dữ liệu có độ
         phức tạp cao và cần dự đoán nhiều chỉ số đồng thời.
-      </p>
-      </div>
-      {% endif %}
+      </p> {% endcomment %}
+    </div>
+    {% endif %}
+  </div>
 </section>
-
 {% if knn_result %}
 <section class="section">
-    <div class="section-header">
-        <h2>📊 Chẩn Đoán & Phân Loại rủi ro</h2>
-        <p class="section-subtitle">Dựa trên đối chiếu hồ sơ sức khỏe với cộng đồng (Peer Benchmarking)</p>
-    </div>
-
-    <div class="metrics-grid">
-        <article class="metric-card {% if knn_result.insomnia_prob > 50 %}risk{% endif %}">
-            <div class="metric-icon">📋</div>
-            <h4>Xác suất Mất ngủ</h4>
-            <div class="metric-value">{{ knn_result.insomnia_prob }}%</div>
-            <p class="metric-detail">(Insomnia)</p>
-            <div class="meter-bar compact">
-                {% if knn_result.insomnia_prob > 50 %}
-                <span class="meter-fill risk" data-value="{{ knn_result.insomnia_prob }}"></span>
-                {% else %}
-                <span class="meter-fill warning" data-value="{{ knn_result.insomnia_prob }}"></span>
-                {% endif %}
-            </div>
-        </article>
-
-        <article class="metric-card">
-            <h4>Tổng Thời Gian Ngủ</h4>
-            <div class="metric-value">{{ inputs.sleep_hours }} giờ</div>
-            <p class="metric-detail">Thời gian ngủ thực tế trong đêm qua</p>
-        </article>
-
-        <article class="metric-card {% if knn_result.apnea_prob > 50 %}risk{% endif %}">
-            <div class="metric-icon">🫁</div>
-            <h4>Xác suất Sleep Apnea</h4>
-            <div class="metric-value">{{ knn_result.apnea_prob }}%</div>
-            <p class="metric-detail">(Ngưng thở khi ngủ)</p>
-            <div class="meter-bar compact">
-                {% if knn_result.apnea_prob > 50 %}
-                <span class="meter-fill risk" data-value="{{ knn_result.apnea_prob }}"></span>
-                {% else %}
-                <span class="meter-fill warning" data-value="{{ knn_result.apnea_prob }}"></span>
-                {% endif %}
-            </div>
-        </article>
-
-        <article class="metric-card">
-            <h4>Deep Sleep (N3)</h4>
-            <div class="metric-value">{{ analysis.deep_ratio }}%</div>
-            <p class="metric-detail">Tỷ lệ giấc ngủ sâu - quan trọng cho phục hồi</p>
-            <div class="meter-bar">
-                <span class="meter-fill" data-value="{{ analysis.deep_ratio }}"></span>
-            </div>
-        </article>
-
-        <article class="metric-card {% if knn_result.none_prob > 50 %}good{% endif %}">
-            <div class="metric-icon">✅</div>
-            <h4>Xác suất Bình thường</h4>
-            <div class="metric-value">{{ knn_result.none_prob }}%</div>
-            <p class="metric-detail">(Sức khỏe ổn định)</p>
-            <div class="meter-bar compact">
-                <span class="meter-fill good" data-value="{{ knn_result.none_prob }}"></span>
-            </div>
-        </article>
-
-        <article class="metric-card">
-            <h4>REM Sleep</h4>
-            <div class="metric-value">{{ analysis.rem_ratio }}%</div>
-            <p class="metric-detail">Tỷ lệ giấc ngủ mơ - quan trọng cho tâm lý</p>
-            <div class="meter-bar">
-                <span class="meter-fill" data-value="{{ analysis.rem_ratio }}"></span>
-            </div>
-        </article>
-
-        <article class="metric-card">
-            <h4>Recovery Score</h4>
-            <div class="metric-value">{{ analysis.recovery_score }}/100</div>
-            <p class="metric-detail">Điểm phục hồi cơ thể dựa trên các chỉ số</p>
-            <div class="meter-bar">
-                <span class="meter-fill" data-value="{{ analysis.recovery_score }}"></span>
-            </div>
-        </article>
-
-        <article class="metric-card">
-            <h4>Lần Thức Giấc</h4>
-            <div class="metric-value">{{ inputs.awakenings }}</div>
-            <p class="metric-detail">Số lần thức giấc trong đêm - ít hơn tốt hơn</p>
-        </article>
-
-        <article class="metric-card">
-            <h4>Độ Phân Mảnh</h4>
-            <div class="metric-value">
-                {% if inputs.awakenings > 5 %} Cao {% elif inputs.awakenings > 2 %}
-                Trung Bình {% else %} Thấp {% endif %}
-            </div>
-            <p class="metric-detail">Mức độ gián đoạn giấc ngủ trong đêm</p>
-        </article>
-    </div>
-</section>
-{% endif %}
-<!-- Group 2: Cảnh Báo Rủi Ro -->
-<section class="section">
   <div class="section-header">
-    <h2>Cảnh Báo Rủi Ro Sức Khỏe</h2>
-    <p class="section-subtitle">Phát hiện các vấn đề sức khỏe tiềm ẩn</p>
+    <h2> Chẩn Đoán & Phân Loại rủi ro </h2>
+    <p class="section-subtitle">Dựa trên đối chiếu hồ sơ sức khỏe với cộng đồng (Peer Benchmarking)</p>
   </div>
 
-  <div class="alerts-grid">
-    <article class="alert-card {{ analysis.apnea_tone }}">
-      <h4>Sleep Apnea</h4>
-      <div class="alert-status">{{ analysis.apnea_label }}</div>
-      <div class="alert-score">{{ analysis.apnea_risk_score }}/100</div>
-
-      {% if analysis.apnea_label == "Cao" or analysis.apnea_label == "High" %}
-      <div class="alert-warning">
-        <p>
-          <strong> Cần Chú Ý:</strong> Sự sụt giảm SpO2 đáng lo ngại. Nên tư vấn
-          bác sĩ.
-        </p>
-      </div>
-      {% else %}
-      <p class="alert-info">SpO2 ổn định. Rủi ro Sleep Apnea thấp.</p>
-      {% endif %}
-
-      <div class="metric-detail">
-        SpO2 Tối Thiểu: {{ inputs.spo2_min }}% | Sự Kiện Tụt: {{
-        inputs.spo2_drop_events }}
+  <div class="metrics-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px;">
+    <article class="metric-card {% if knn_result.insomnia_prob > 50 %}risk{% endif %}">
+      <div class="metric-icon"></div>
+      <h4>Xác suất Mất ngủ</h4>
+      <div class="metric-value">{{ knn_result.insomnia_prob }}%</div>
+      <p class="metric-detail">(Insomnia)</p>
+      <div class="meter-bar compact">
+        {% if knn_result.insomnia_prob > 50 %}
+        <span class="meter-fill risk" data-value="{{ knn_result.insomnia_prob }}"></span>
+        {% else %}
+        <span class="meter-fill warning" data-value="{{ knn_result.insomnia_prob }}"></span>
+        {% endif %}
       </div>
     </article>
 
+    <article class="metric-card {% if knn_result.apnea_prob > 50 %}risk{% endif %}">
+      <div class="metric-icon"></div>
+      <h4>Xác suất Sleep Apnea</h4>
+      <div class="metric-value">{{ knn_result.apnea_prob }}%</div>
+      <p class="metric-detail">(Ngưng thở khi ngủ)</p>
+      <div class="meter-bar compact">
+        {% if knn_result.apnea_prob > 50 %}
+        <span class="meter-fill risk" data-value="{{ knn_result.apnea_prob }}"></span>
+        {% else %}
+        <span class="meter-fill warning" data-value="{{ knn_result.apnea_prob }}"></span>
+        {% endif %}
+      </div>
+    </article>
+
+    <article class="metric-card {% if knn_result.none_prob > 50 %}good{% endif %}">
+      <div class="metric-icon"></div>
+      <h4>Xác suất Bình thường</h4>
+      <div class="metric-value">{{ knn_result.none_prob }}%</div>
+      <p class="metric-detail">(Sức khỏe ổn định)</p>
+      <div class="meter-bar compact">
+        <span class="meter-fill good" data-value="{{ knn_result.none_prob }}"></span>
+      </div>
+    </article>
+  </div>
+</section>
+{% endif %}
+
+<!-- Sleep Hours Chart Section -->
+<section class="section">
+  <div class="section-header">
+    <h2>Biểu Đồ Thời Gian Ngủ (Dữ liệu từ CSV)</h2>
+    <p class="section-subtitle">Trích xuất trực tiếp từ file bạn vừa kéo thả</p>
+  </div>
+  
+  <article class="metric-card" style="padding: 24px; background: var(--surface); border-radius: var(--radius-lg); border: 1px solid var(--line);">
+    <div class="chart-container" style="position: relative; height: 350px; width: 100%;">
+      <canvas id="sleepHoursChart"></canvas>
+    </div>
+  </article>
+</section>
+
+<!-- Health Risks Warning Section -->
+<section class="section">
+  <div class="section-header">
+    <h2>Cảnh Báo Rủi Ro Sức Khỏe</h2>
+    <p class="section-subtitle">Phát hiện các vấn đề sức khỏe tiềm ẩn bằng mô hình học máy</p>
+  </div>
+
+  <div class="alerts-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px;">
+    <!-- Stress Level Card -->
     <article class="alert-card {{ analysis.stress_tone }}">
       <h4>Mức Độ Căng Thẳng</h4>
       <div class="alert-status">{{ analysis.stress_label }}</div>
@@ -183,8 +131,7 @@ Kết Quả{% endblock %} {% block content %}
       {% if analysis.stress_label == "Cao" or analysis.stress_label == "High" %}
       <div class="alert-warning">
         <p>
-          <strong> Cần Chú Ý:</strong> HRV thấp và nhịp tim nghi cao. Cần thư
-          giãn hơn.
+          <strong> Cần Chú Ý:</strong> HRV thấp và nhịp tim nghỉ cao. Cần thư giãn hơn.
         </p>
       </div>
       {% else %}
@@ -198,75 +145,67 @@ Kết Quả{% endblock %} {% block content %}
       </div>
     </article>
 
-    {% if model_predictions %}
+    <!-- Cardiovascular Disease Card -->
     <article class="alert-card {{ analysis.heart_disease_tone }}">
       <h4>Nguy cơ Bệnh Tim</h4>
-      <div class="alert-status">{{ analysis.heart_disease_label }}</div>
+      <div class="alert-status">{{ analysis.heart_disease_label|default:"Chưa xác định" }}</div>
       <div class="alert-score">
         {% if analysis.heart_disease_score > 0 %} {{ analysis.heart_disease_score }}/100 {% else %} Chưa có dữ liệu {% endif %}
       </div>
 
-      {% if analysis.heart_disease_label == "Cao" or analysis.heart_disease_label == "High" %}
+      {% if analysis.heart_disease_label == "Cao" or analysis.heart_disease_label == "High" or analysis.heart_disease_label == "Positive" %}
       <div class="alert-warning">
         <p>
-          <strong> Cần Chú Ý:</strong> Rủi ro bệnh tim cao. Nên theo dõi thêm và
-          kiểm tra huyết áp.
+          <strong> Cần Chú Ý:</strong> Rủi ro bệnh tim cao. Nên theo dõi thêm và kiểm tra huyết áp thường xuyên.
         </p>
       </div>
-      {% elif analysis.heart_disease_label == "Thấp" or analysis.heart_disease_label == "Low" %}
+      {% elif analysis.heart_disease_label == "Thấp" or analysis.heart_disease_label == "Low" or analysis.heart_disease_label == "Negative" %}
       <p class="alert-info">
         Nguy cơ tim mạch thấp. Mô hình dự đoán sức khỏe tim mạch ổn định.
       </p>
       {% else %}
       <p class="alert-info">
-        Chưa đủ dữ liệu để đưa ra cảnh báo bệnh tim chính xác.
+        Chưa đủ dữ liệu lâm sàng hoặc mô hình chưa thể đưa ra dự đoán nguy cơ bệnh tim.
       </p>
       {% endif %}
 
       <div class="metric-detail">
-        HRV: {{ inputs.hrv }} ms | RHR: {{ inputs.rhr }} bpm
+        HRV: {{ inputs.hrv }} ms | RHR: {{ inputs.rhr }} bpm | Huyết áp: {{ inputs.blood_pressure }}
       </div>
     </article>
 
+    <!-- Alzheimer Disease Card -->
     <article class="alert-card {{ analysis.alzheimer_risk_tone }}">
       <h4>Nguy cơ Alzheimer</h4>
-      <div class="alert-status">{{ analysis.alzheimer_risk_label }}</div>
+      <div class="alert-status">{{ analysis.alzheimer_risk_label|default:"Chưa xác định" }}</div>
       <div class="alert-score">
         {% if analysis.alzheimer_risk_score > 0 %} {{ analysis.alzheimer_risk_score }}/100 {% else %} Chưa có dữ liệu {% endif %}
       </div>
 
-      {% if analysis.alzheimer_risk_label == "Cao" or analysis.alzheimer_risk_label == "High" %}
+      {% if analysis.alzheimer_risk_label == "Cao" or analysis.alzheimer_risk_label == "High" or analysis.alzheimer_risk_label == "1" %}
       <div class="alert-warning">
         <p>
-          <strong> Cần Chú Ý:</strong> Nguy cơ Alzheimer cao. Nên tư vấn chuyên
-          gia nếu có biểu hiện trí nhớ giảm.
+          <strong> Cần Chú Ý:</strong> Nguy cơ Alzheimer cao. Nên tư vấn chuyên gia và thực hiện các bài tập rèn luyện trí nhớ.
         </p>
       </div>
-      {% elif analysis.alzheimer_risk_label == "Thấp" or analysis.alzheimer_risk_label == "Low" %}
+      {% elif analysis.alzheimer_risk_label == "Thấp" or analysis.alzheimer_risk_label == "Low" or analysis.alzheimer_risk_label == "0" %}
       <p class="alert-info">
         Nguy cơ Alzheimer thấp. Mô hình dự đoán mức rủi ro hiện tại ổn định.
       </p>
       {% else %}
       <p class="alert-info">
-        Mô hình hiện tại cần thêm thông tin lâm sàng để dự báo Alzheimer chính
-        xác.
+        Cần cung cấp thêm điểm nhận thức và điểm kiểm tra trí nhớ để mô hình dự đoán chính xác hơn.
       </p>
       {% endif %}
 
       <div class="metric-detail">
-        Nếu có thêm hồ sơ sức khỏe, dự báo sẽ chính xác hơn.
+        Điểm nhận thức: {{ inputs.cognitive_score|default:"25.0" }} | Điểm trí nhớ: {{ inputs.memory_test_score|default:"7.0" }}
       </div>
-    </article>
-
-    <article class="alert-card">
-      <h4>Tóm Tắt Cảnh Báo</h4>
-      <ul class="alert-list">{% if analysis.apnea_label == "Cao" or analysis.apnea_label == "High" %}<li class="risk">Rủi ro Sleep Apnea cao</li>{% endif %}{% if analysis.stress_label == "Cao" or analysis.stress_label == "High" %}<li class="risk">Mức căng thẳng cao</li>{% endif %}{% if analysis.heart_disease_label == "Cao" or analysis.heart_disease_label == "High" %}<li class="risk">Nguy cơ bệnh tim cao</li>{% endif %}{% if analysis.alzheimer_risk_label == "Cao" or analysis.alzheimer_risk_label == "High" %}<li class="risk">Nguy cơ Alzheimer cao</li>{% endif %}{% if inputs.awakenings > 5 %}<li class="warning">Giấc ngủ bị phân mảnh nhiều</li>{% endif %}{% if analysis.recovery_score < 40 %}<li class="risk">Recovery Score quá thấp</li>{% else %}<li class="ok">Không có cảnh báo cấp cao</li>{% endif %}</ul>
     </article>
   </div>
 </section>
-    {% endif %}
 
-<!-- Group 3: Dự Báo & Khuyến Nghị -->
+<!-- Forecast & Recommendations -->
 <section class="section">
   <div class="section-header">
     <h2>Dự Báo & Khuyến Nghị</h2>
@@ -275,31 +214,27 @@ Kết Quả{% endblock %} {% block content %}
 
   <div class="recommendations-container">
     <article class="prediction-card">
-      <h4>Trạng Thái Ngày Hôm Nay</h4>
+      <h4>Trạng Thái Ngày Hôm Ngăn</h4>
       <div class="prediction-value {{ analysis.energy_tone }}">
         {{ analysis.energy_label }}
       </div>
 
       {% if analysis.energy_label == "Tỉnh táo" or analysis.energy_label == "Energized" %}
       <p>
-        Bạn sẽ tỉnh táo và năng lượng cao trong ngày. Thích hợp cho công việc
-        nặng hoặc tập luyện.
+        Bạn sẽ tỉnh táo và năng lượng cao trong ngày. Thích hợp cho công việc nặng hoặc tập luyện.
       </p>
       {% elif analysis.energy_label == "Uể oải" or analysis.energy_label == "Fatigued" %}
       <p>
-        Bạn có thể cảm thấy uể oải. Nên sắp xếp công việc nhẹ nhàng hơn và tránh
-        quyết định lớn.
+        Bạn có thể cảm thấy uể oải. Nên sắp xếp công việc nhẹ nhàng hơn và tránh các quyết định căng thẳng.
       </p>
       {% else %}
       <p>
-        Bạn sẽ ở trạng thái bình thường. Năng lượng vừa đủ cho các hoạt động
-        hàng ngày.
+        Bạn sẽ ở trạng thái bình thường. Năng lượng vừa đủ cho các hoạt động hàng ngày.
       </p>
       {% endif %}
 
       <div class="metric-detail">
-        Dựa trên: Deep Sleep {{ analysis.deep_ratio }}% + REM {{
-        analysis.rem_ratio }}%
+        Dựa trên: Deep Sleep {{ analysis.deep_ratio }}% + REM {{ analysis.rem_ratio }}%
       </div>
     </article>
 
@@ -307,15 +242,13 @@ Kết Quả{% endblock %} {% block content %}
       <h4>Sleep Debt (Nợ Ngủ)</h4>
       <div class="prediction-value">{{ analysis.sleep_debt_hours }} giờ</div>
       <p>
-        Khoản nợ ngủ tích lũy qua {{ inputs.consecutive_days }} ngày gần nhất.
-        Nên bù đắp bằng cách ngủ thêm hoặc điều chỉnh lịch trình.
+        Khoản nợ ngủ tích lũy qua {{ inputs.consecutive_days }} ngày gần nhất. Nên bù đắp bằng cách ngủ thêm hoặc đi ngủ sớm hơn.
       </p>
 
       {% if analysis.sleep_debt_hours > 5 %}
       <div class="alert-warning">
         <p>
-          💤 <strong>Cảnh báo:</strong> Nợ ngủ cao. Ưu tiên ngủ đủ giấc trong
-          những đêm tới.
+          💤 <strong>Cảnh báo:</strong> Nợ ngủ cao. Ưu tiên ngủ đủ giấc trong những đêm tới để hồi phục cơ thể.
         </p>
       </div>
       {% endif %}
@@ -325,24 +258,26 @@ Kết Quả{% endblock %} {% block content %}
       <h4>Giờ Ngủ Lý Tưởng</h4>
       <div class="prediction-value">{{ analysis.ideal_bedtime }}</div>
       <p>
-        Giờ vào giường gợi ý để đạt được {{ inputs.target_sleep_hours }} giờ ngủ
-        và thức dậy vào {{ inputs.wake_time }}.
+        Giờ vào giường gợi ý để đạt được {{ inputs.target_sleep_hours }} giờ ngủ và thức dậy vào lúc {{ inputs.wake_time }} sáng.
       </p>
 
       <div class="metric-detail">
-        Mục tiêu: {{ inputs.target_sleep_hours }} giờ | Thức: {{
-        inputs.wake_time }}
+        Mục tiêu: {{ inputs.target_sleep_hours }} giờ | Thức dậy: {{ inputs.wake_time }}
       </div>
     </article>
   </div>
 
   <div class="recommendations-section">
     <h3>Khuyến Nghị Hành Động</h3>
-    <ul class="recommendations-list">{% for recommendation in analysis.recommendations %}<li>{{ recommendation }}</li>{% endfor %}</ul>
+    <ul class="recommendations-list">
+      {% for recommendation in analysis.recommendations %}
+      <li>{{ recommendation }}</li>
+      {% endfor %}
+    </ul>
   </div>
 </section>
 
-<!-- Chi Tiết Giấc Ngủ -->
+<!-- Sleep Details -->
 <section class="section details-section">
   <div class="section-header">
     <h2>Chi Tiết Giấc Ngủ</h2>
@@ -362,11 +297,194 @@ Kết Quả{% endblock %} {% block content %}
 
 <!-- Action Buttons -->
 <section class="section action-section">
-  <div class="action-buttons">
-    <a href="{% url 'upload_page' %}" class="button button-primary"
-      >Phân Tích Dữ Liệu Mới</a
-    >
+  <div class="action-buttons" style="display: flex; gap: 16px; justify-content: center; margin-top: 24px;">
+    <a href="{% url 'upload_page' %}" class="button button-secondary">
+      <span></span> Phân Tích File Mới
+    </a>
+
+    <a href="{% url 'upload_page' %}#manual-input" class="button button-primary">
+      <span></span> Nhập Thủ Công Mới
+    </a>
   </div>
 </section>
+
+<!-- CSS Styles for Tabs & Tables -->
+<style>
+  .tab-navigation {
+    display: flex;
+    gap: 16px;
+    border-bottom: 2px solid var(--line);
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  .tab-button {
+    padding: 14px 28px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.05rem;
+    color: var(--muted);
+    font-weight: 600;
+    transition: all var(--transition);
+    border-bottom: 3px solid transparent;
+  }
+
+  .tab-button:hover {
+    color: var(--ink);
+  }
+
+  .tab-button.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+  }
+
+  .tab-content {
+    display: none;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .tab-content.active {
+    display: block;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    width: 100%;
+  }
+  
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+  }
+  
+  th {
+    padding: 14px 12px;
+    text-align: left;
+    border-bottom: 2px solid var(--line);
+    color: var(--primary);
+    font-weight: 700;
+    background-color: var(--primary-light);
+  }
+  
+  td {
+    padding: 14px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--line);
+    color: var(--ink);
+  }
+  
+  tbody tr:hover {
+    background-color: var(--primary-light);
+  }
+</style>
+
+<!-- Chart.js JSON Data and Initialization -->
+{{ chart_data|json_script:"chart-data-raw" }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+
+
+      // Chart.js initialization
+      const rawDataElement = document.getElementById('chart-data-raw');
+      if (rawDataElement) {
+          const rawData = JSON.parse(rawDataElement.textContent);
+          const labels = rawData.labels || [];
+          const sleepHours = rawData.sleep_hours || [];
+          const deepSleep = rawData.deep_sleep || [];
+          const remSleep = rawData.rem_sleep || [];
+
+          // 1. Sleep Hours Chart (Line)
+          const ctxHours = document.getElementById('sleepHoursChart');
+          if (ctxHours) {
+              if (labels.length === 0) {
+                  const ctx = ctxHours.getContext('2d');
+                  ctx.font = '16px Inter, sans-serif';
+                  ctx.fillStyle = '#5a6577';
+                  ctx.textAlign = 'center';
+                  ctx.fillText('Chưa có dữ liệu xu hướng giấc ngủ.', ctxHours.width / 2, ctxHours.height / 2);
+              } else {
+                  new Chart(ctxHours, {
+                      type: 'line',
+                      data: {
+                          labels: labels,
+                          datasets: [{
+                              label: 'Thời gian ngủ (giờ)',
+                              data: sleepHours,
+                              borderColor: '#0d7e77',
+                              backgroundColor: 'rgba(13, 126, 119, 0.08)',
+                              borderWidth: 3,
+                              fill: true,
+                              tension: 0.3,
+                              pointBackgroundColor: '#0d7e77',
+                              pointHoverBackgroundColor: '#fff',
+                              pointHoverBorderColor: '#0d7e77',
+                              pointHoverBorderWidth: 2,
+                              pointRadius: 4,
+                              pointHoverRadius: 6
+                          }]
+                      },
+                      options: {
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          plugins: {
+                              legend: {
+                                  display: false
+                              },
+                              tooltip: {
+                                  backgroundColor: '#1a1f3a',
+                                  titleColor: '#fff',
+                                  bodyColor: '#fff',
+                                  padding: 12,
+                                  cornerRadius: 8,
+                                  callbacks: {
+                                      label: function(context) {
+                                          return 'Thời gian ngủ: ' + context.raw + ' giờ';
+                                      }
+                                  }
+                              }
+                          },
+                          scales: {
+                              y: {
+                                  min: 0,
+                                  max: 12,
+                                  grid: {
+                                      color: 'rgba(26, 31, 58, 0.05)'
+                                  },
+                                  ticks: {
+                                      color: '#5a6577',
+                                      font: {
+                                          family: 'Inter, sans-serif'
+                                      }
+                                  }
+                              },
+                              x: {
+                                  grid: {
+                                      display: false
+                                  },
+                                  ticks: {
+                                      color: '#5a6577',
+                                      font: {
+                                          family: 'Inter, sans-serif'
+                                      }
+                                  }
+                              }
+                          }
+                      }
+                  });
+              }
+          }
+
+
+      }
+  });
+</script>
 
 {% endblock %}

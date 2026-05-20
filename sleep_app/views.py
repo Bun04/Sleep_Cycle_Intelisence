@@ -36,6 +36,11 @@ DEFAULT_INPUT = {
     "heart_rate": 70,
     "daily_steps": 8000,
     "spo2_min": 89,  # 95 - 3*2
+    "smoker": 0,
+    "stroke_history": 0,
+    "family_history_alzheimer": 0,
+    "cognitive_score": 25.0,
+    "memory_test_score": 7.0,
 }
 
 
@@ -64,9 +69,9 @@ def upload_view(request):
                 )
                 return render(request, "upload.html", context)
 
-            # =========================
+       
             # READ FILE
-            # =========================
+       
 
             if file_name.endswith(".csv"):
 
@@ -104,77 +109,41 @@ def upload_view(request):
             )
 
             # =========================
-            # EXTRACT FIRST ROW
+            # PROCESS ALL ROWS & SAVE RECORDS
             # =========================
 
-            first_row = rows[0]
-
-            extracted_input = _extract_csv_row(first_row)
-
-            # =========================
-            # ALGORITHM AND MODEL PREDICTIONS
-            # =========================
-
-            knn_result = predict_sleep_quality_knn(extracted_input)
-            model_predictions = predict_sleep_model_from_csv_row(extracted_input)
-
-            analysis = _analyze_sleep(extracted_input)
-            selected_algorithm = "KNN"
-            analysis["algorithm_used"] = selected_algorithm
-
-            # =========================
-            # SAVE RECORD
-            # =========================
-
-            SleepRecord.objects.create(
-                user_name=extracted_input.get(
-                    "user_name",
-                    "CSV Upload"
-                ),
-                sleep_hours=extracted_input.get(
-                    "sleep_hours",
-                    7.0
-                ),
-                deep_sleep_minutes=extracted_input.get(
-                    "deep_sleep_minutes",
-                    90
-                ),
-                rem_sleep_minutes=extracted_input.get(
-                    "rem_sleep_minutes",
-                    100
-                ),
-                awakenings=extracted_input.get(
-                    "awakenings",
-                    2
-                ),
-                spo2_drop_events=extracted_input.get(
-                    "spo2_drop_events",
-                    0
-                ),
-                hrv=extracted_input.get(
-                    "hrv",
-                    50
-                ),
-                rhr=extracted_input.get(
-                    "rhr",
-                    60
-                ),
-                consecutive_days=extracted_input.get(
-                    "consecutive_days",
-                    1
-                ),
-                target_sleep_hours=extracted_input.get(
-                    "target_sleep_hours",
-                    8.0
-                ),
-                quality_label=analysis.get(
-                    "quality_label"
-                ),
-                recovery_score=analysis.get(
-                    "recovery_score"
-                ),
-                algorithm_used=selected_algorithm,
-            )
+            records_to_create = []
+            for r in rows:
+                extracted_input = _extract_csv_row(r)
+                analysis = _analyze_sleep(extracted_input)
+                
+                # Check algorithm used
+                selected_algorithm = _select_algorithm(extracted_input)
+                model_predictions = predict_sleep_model_from_csv_row(extracted_input)
+                
+                if model_predictions:
+                    algorithm_used = 'Random Forest'
+                else:
+                    algorithm_used = selected_algorithm
+                    
+                records_to_create.append(SleepRecord(
+                    user_name=extracted_input.get("user_name", "CSV Upload"),
+                    sleep_hours=extracted_input.get("sleep_hours", 7.0),
+                    deep_sleep_minutes=extracted_input.get("deep_sleep_minutes", 90),
+                    rem_sleep_minutes=extracted_input.get("rem_sleep_minutes", 100),
+                    awakenings=extracted_input.get("awakenings", 2),
+                    spo2_drop_events=extracted_input.get("spo2_drop_events", 0),
+                    hrv=extracted_input.get("hrv", 50),
+                    rhr=extracted_input.get("rhr", 60),
+                    consecutive_days=extracted_input.get("consecutive_days", 1),
+                    target_sleep_hours=extracted_input.get("target_sleep_hours", 8.0),
+                    quality_label=analysis.get("quality_label", "Khá"),
+                    quality_tone=analysis.get("quality_tone", "moderate"),
+                    recovery_score=analysis.get("recovery_score", 70),
+                    algorithm_used=algorithm_used
+                ))
+            
+            SleepRecord.objects.bulk_create(records_to_create)
 
             # =========================
             # UPDATE HISTORY
@@ -185,8 +154,15 @@ def upload_view(request):
             upload_history.save()
 
             # =========================
-            # CONTEXT
+            # CONTEXT FOR PREVIEW (FIRST ROW)
             # =========================
+
+            first_row = rows[0]
+            first_extracted = _extract_csv_row(first_row)
+            first_analysis = _analyze_sleep(first_extracted)
+            first_knn = predict_sleep_quality_knn(first_extracted)
+            first_model = predict_sleep_model_from_csv_row(first_extracted)
+            first_algo = "Random Forest" if first_model else _select_algorithm(first_extracted)
 
             context["upload_meta"] = {
                 "file_name": upload_file.name,
@@ -195,26 +171,21 @@ def upload_view(request):
             }
 
             context["data_preview"] = _build_csv_preview(rows[:5])
-
-            context["uploaded_input"] = extracted_input
-
-            context["missing_columns"] = (
-                _get_missing_columns(first_row)
-            )
-
-            context["analysis"] = analysis
-            context["knn_result"] = knn_result or {
+            context["uploaded_input"] = first_extracted
+            context["missing_columns"] = _get_missing_columns(first_row)
+            context["analysis"] = first_analysis
+            context["knn_result"] = first_knn or {
                 "label": "None",
                 "insomnia_prob": 0,
                 "apnea_prob": 0,
                 "none_prob": 100,
                 "score": 100,
             }
-            context["model_predictions"] = model_predictions
-            context["selected_algorithm"] = selected_algorithm
+            context["model_predictions"] = first_model
+            context["selected_algorithm"] = first_algo
 
             context["upload_success"] = (
-                f"Upload thành công {len(rows)} dòng dữ liệu."
+                f"Upload thành công và đã phân tích, lưu trữ {len(rows)} đêm ngủ."
             )
 
         except Exception as e:
@@ -229,11 +200,75 @@ def upload_view(request):
                 upload_history.save()
 
     return render(request, "upload.html", context)
+def _get_chart_data(user_name=None):
+    if user_name:
+        records = list(SleepRecord.objects.filter(user_name=user_name).order_by('created_at'))
+    else:
+        records = list(SleepRecord.objects.all().order_by('created_at'))
+        
+    if not records:
+        return {
+            'labels': [],
+            'sleep_hours': [],
+            'deep_sleep': [],
+            'rem_sleep': [],
+        }
+
+    if len(records) > 30:
+        records = records[-30:]
+
+    labels = [f"Ngày {i+1}" for i in range(len(records))]
+    sleep_hours = [r.sleep_hours for r in records]
+    deep_sleep = [r.deep_sleep_minutes for r in records]
+    rem_sleep = [r.rem_sleep_minutes for r in records]
+    
+    return {
+        'labels': labels,
+        'sleep_hours': sleep_hours,
+        'deep_sleep': deep_sleep,
+        'rem_sleep': rem_sleep,
+    }
+
+
 def dashboard_view(request):
-    inputs = _extract_inputs(request)
-    model_predictions = _extract_model_predictions(request)
-    if model_predictions is None:
-        model_predictions = predict_sleep_model_from_csv_row(inputs)
+    user_name = request.GET.get('user_name')
+    record_id = request.GET.get('id')
+    
+    if request.method == "POST":
+        inputs = _extract_inputs(request)
+        model_predictions = _extract_model_predictions(request)
+        if model_predictions is None:
+            model_predictions = predict_sleep_model_from_csv_row(inputs)
+    else:
+        # GET request: fetch specific or latest record
+        latest_record = None
+        if record_id:
+            latest_record = SleepRecord.objects.filter(id=record_id).first()
+        if not latest_record and user_name:
+            latest_record = SleepRecord.objects.filter(user_name=user_name).first()
+        if not latest_record:
+            latest_record = SleepRecord.objects.first()
+            
+        if latest_record:
+            inputs = DEFAULT_INPUT.copy()
+            inputs["user_name"] = latest_record.user_name
+            inputs["sleep_hours"] = latest_record.sleep_hours
+            inputs["sleep_duration"] = latest_record.sleep_hours
+            inputs["deep_sleep_minutes"] = latest_record.deep_sleep_minutes
+            inputs["rem_sleep_minutes"] = latest_record.rem_sleep_minutes
+            inputs["awakenings"] = latest_record.awakenings
+            inputs["spo2_drop_events"] = latest_record.spo2_drop_events
+            inputs["hrv"] = latest_record.hrv
+            inputs["rhr"] = latest_record.rhr
+            inputs["consecutive_days"] = latest_record.consecutive_days
+            inputs["target_sleep_hours"] = latest_record.target_sleep_hours
+            inputs["spo2_min"] = 95 - latest_record.spo2_drop_events * 2
+            
+            # Predict from these inputs
+            model_predictions = predict_sleep_model_from_csv_row(inputs)
+        else:
+            inputs = DEFAULT_INPUT.copy()
+            model_predictions = predict_sleep_model_from_csv_row(inputs)
 
     # Tự động chọn thuật toán dựa trên dữ liệu
     selected_algorithm = _select_algorithm(inputs)
@@ -253,14 +288,14 @@ def dashboard_view(request):
             analysis['alzheimer_risk_score'] = 0
     else:
         analysis['algorithm_used'] = selected_algorithm
-        analysis['heart_disease_label'] = None
+        analysis['heart_disease_label'] = 'Chưa xác định'
         analysis['heart_disease_tone'] = 'moderate'
         analysis['heart_disease_score'] = 0
-        analysis['alzheimer_risk_label'] = None
+        analysis['alzheimer_risk_label'] = 'Chưa xác định'
         analysis['alzheimer_risk_tone'] = 'moderate'
         analysis['alzheimer_risk_score'] = 0
 
-    use_knn = request.method == 'POST' and request.POST.get('source') == 'csv'
+    use_knn = (request.method == 'POST' and request.POST.get('source') == 'csv') or (request.method == 'GET' and SleepRecord.objects.count() > 0)
     knn_result = predict_sleep_quality_knn(inputs) if use_knn else None
     if use_knn and not knn_result:
         knn_result = {
@@ -271,8 +306,8 @@ def dashboard_view(request):
             "score": 100,
         }
     
-    # Lưu kết quả vào database nếu là request POST
-    if request.method == "POST":
+    # Lưu kết quả vào database nếu là request POST thủ công
+    if request.method == "POST" and request.POST.get('source') != 'csv':
         try:
             SleepRecord.objects.create(
                 user_name=inputs.get('user_name', 'User'),
@@ -286,11 +321,19 @@ def dashboard_view(request):
                 consecutive_days=inputs.get('consecutive_days', 1),
                 target_sleep_hours=inputs.get('target_sleep_hours'),
                 quality_label=analysis.get('quality_label'),
+                quality_tone=analysis.get('quality_tone', 'moderate'),
                 recovery_score=analysis.get('recovery_score'),
                 algorithm_used=analysis.get('algorithm_used', 'Random Forest')
             )
         except Exception as e:
             print(f"Error saving sleep record: {e}")
+            
+    # Lấy dữ liệu biểu đồ và lịch sử cho người dùng hiện tại
+    target_user = inputs.get('user_name')
+    chart_data = _get_chart_data(target_user)
+    recent_records = SleepRecord.objects.filter(user_name=target_user).order_by('-created_at')[:10]
+    if not recent_records.exists():
+        recent_records = SleepRecord.objects.all().order_by('-created_at')[:10]
     
     context = {
         "inputs": inputs,
@@ -298,6 +341,8 @@ def dashboard_view(request):
         "knn_result": knn_result,
         "model_predictions": model_predictions,
         "feature_groups": _build_feature_groups(),
+        "chart_data": chart_data,
+        "recent_records": recent_records,
     }
     return render(request, "dashboard.html", context)
 
@@ -330,6 +375,11 @@ def _extract_inputs(request):
         "blood_pressure": request.POST.get("blood_pressure", DEFAULT_INPUT["blood_pressure"]).strip() or DEFAULT_INPUT["blood_pressure"],
         "heart_rate": _to_int(request.POST.get("heart_rate"), DEFAULT_INPUT["heart_rate"]),
         "daily_steps": _to_int(request.POST.get("daily_steps"), DEFAULT_INPUT["daily_steps"]),
+        "smoker": _to_int(request.POST.get("smoker"), DEFAULT_INPUT["smoker"]),
+        "stroke_history": _to_int(request.POST.get("stroke_history") or request.POST.get("stroke"), DEFAULT_INPUT["stroke_history"]),
+        "family_history_alzheimer": _to_int(request.POST.get("family_history_alzheimer") or request.POST.get("family_history"), DEFAULT_INPUT["family_history_alzheimer"]),
+        "cognitive_score": _to_float(request.POST.get("cognitive_score"), DEFAULT_INPUT["cognitive_score"]),
+        "memory_test_score": _to_float(request.POST.get("memory_test_score"), DEFAULT_INPUT["memory_test_score"]),
     }
     
     # Add computed spo2_min field for dashboard display
@@ -732,9 +782,9 @@ def _extract_csv_row(row):
     # Mapping các tên cột có thể có
     column_mappings = {
         'user_name': ['user_name', 'name', 'tên người dùng', 'tên'],
-        'sleep_hours': ['sleep hours', 'hours', 'thời gian ngủ', 'tổng giờ ngủ'],
-        'deep_sleep_minutes': ['deep sleep', 'deep', 'n3', 'deep sleep minutes', 'phút ngủ sâu'],
-        'rem_sleep_minutes': ['rem sleep', 'rem', 'rem sleep minutes', 'phút rem'],
+        'sleep_hours': ['sleep hours', 'hours', 'thời gian ngủ', 'tổng giờ ngủ', 'sleep_hours', 'sleep_duration', 'sleep duration'],
+        'deep_sleep_minutes': ['deep sleep', 'deep', 'n3', 'deep sleep minutes', 'phút ngủ sâu', 'deep_sleep_minutes'],
+        'rem_sleep_minutes': ['rem sleep', 'rem', 'rem sleep minutes', 'phút rem', 'rem_sleep_minutes'],
         'awakenings': ['awakenings', 'awakenings count', 'lần thức giấc'],
         'spo2_drop_events': ['spo2 drop', 'spo2 events', 'spo2 drop events', 'sự kiện spo2'],
         'hrv': ['hrv', 'heart rate variability'],
@@ -801,14 +851,26 @@ def _extract_csv_row(row):
 
 def _get_missing_columns(row):
     """Tìm các cột bắt buộc bị thiếu"""
-    required_columns = ['sleep hours', 'deep sleep', 'rem sleep', 'awakenings']
-    row_keys = [k.lower().strip() for k in row.keys()]
+    column_mappings = {
+        'sleep hours': ['sleep hours', 'hours', 'thời gian ngủ', 'tổng giờ ngủ', 'sleep_hours', 'sleep_duration', 'sleep duration'],
+        'deep sleep': ['deep sleep', 'deep', 'n3', 'deep sleep minutes', 'phút ngủ sâu', 'deep_sleep_minutes'],
+        'rem sleep': ['rem sleep', 'rem', 'rem sleep minutes', 'phút rem', 'rem_sleep_minutes'],
+        'awakenings': ['awakenings', 'awakenings count', 'lần thức giấc']
+    }
+    
+    row_keys = [k.lower().replace('_', ' ').replace('-', ' ').strip() for k in row.keys()]
     
     missing = []
-    for col in required_columns:
-        if not any(col in key or key in col for key in row_keys):
+    for col, aliases in column_mappings.items():
+        found = False
+        for alias in aliases:
+            alias_clean = alias.lower().replace('_', ' ').replace('-', ' ').strip()
+            if alias_clean in row_keys:
+                found = True
+                break
+        if not found:
             missing.append(col)
-    
+            
     return missing
 
 
