@@ -119,7 +119,7 @@
 
       {% if knn_result %}
       <div class="status-block info-block push-up-md">
-        <span class="status-icon">🤖</span>
+        <span class="status-icon"></span>
         <div>
           <strong>Phân tích KNN cho CSV</strong>
           <p>Chức năng 1: phân loại giấc ngủ bằng KNN.</p>
@@ -135,7 +135,7 @@
 
       {% if model_predictions %}
       <div class="status-block info-block push-up-md">
-        <span class="status-icon">🧠</span>
+        <span class="status-icon"></span>
         <div>
           <strong>Dự đoán bệnh bằng Random Forest</strong>
           <p>Chức năng 2: dự đoán nguy cơ bệnh tim và Alzheimer.</p>
@@ -379,6 +379,179 @@
           </label>
 
           
+          <label>
+            <span class="label-title"> Số ngày ngủ liên tiếp (Consecutive Days)</span>
+            <input
+              type="number"
+              min="1"
+              name="consecutive_days"
+              value="{{ default_input.consecutive_days }}"
+              placeholder="VD: 5"
+              required
+            />
+            <span class="field-note">Số ngày theo dõi liên tục.</span>
+          </label>
+
+          <label>
+            <span class="label-title"> Thời gian ngủ mục tiêu (Target Sleep Hours)</span>
+            <input
+              type="number"
+              step="0.1"
+              min="4"
+              max="12"
+              name="target_sleep_hours"
+              value="{{ default_input.target_sleep_hours }}"
+              placeholder="VD: 8.0"
+              required
+            />
+            <span class="field-note">Mục tiêu ngủ hằng đêm (giờ).</span>
+          </label>
+
+          <!-- Nhóm: Chỉ số giấc ngủ nâng cao -->
+          <div style="grid-column: 1 / -1; margin-top: 16px; border-top: 1px solid var(--line); padding-top: 16px;">
+            <h3 style="color: var(--primary); font-size: 1.1rem;">Chỉ số giấc ngủ nâng cao (Advanced Sleep Metrics)</h3>
+          </div>
+
+          <label>
+            <span class="label-title"> Thời gian ngủ sâu (Deep Sleep - phút)</span>
+            <input
+              type="number"
+              min="0"
+              name="deep_sleep_minutes"
+              value="{{ default_input.deep_sleep_minutes }}"
+              placeholder="VD: 82"
+              required
+            />
+            <span class="field-note">Phút ngủ sâu mỗi đêm.</span>
+          </label>
+
+          <label>
+            <span class="label-title"> Thời gian ngủ REM (REM Sleep - phút)</span>
+            <input
+              type="number"
+              min="0"
+              name="rem_sleep_minutes"
+              value="{{ default_input.rem_sleep_minutes }}"
+              placeholder="VD: 96"
+              required
+            />
+            <span class="field-note">Phút ngủ mơ/nhanh mỗi đêm.</span>
+          </label>
+
+          <label>
+            <span class="label-title"> Số lần thức giấc (Awakenings)</span>
+            <input
+              type="number"
+              min="0"
+              name="awakenings"
+              value="{{ default_input.awakenings }}"
+              placeholder="VD: 4"
+              required
+            />
+            <span class="field-note">Số lần thức giấc giữa đêm.</span>
+          </label>
+
+          <label>
+            <span class="label-title"> Biến thiên nhịp tim (HRV)</span>
+            <input
+              type="number"
+              min="0"
+              name="hrv"
+              value="{{ default_input.hrv }}"
+              placeholder="VD: 42"
+              required
+            />
+            <span class="field-note">Heart Rate Variability (ms).</span>
+          </label>
+
+          <label>
+            <span class="label-title"> Nhịp tim nghỉ ngơi (RHR)</span>
+            <input
+              type="number"
+              min="30"
+              max="150"
+              name="rhr"
+              value="{{ default_input.rhr }}"
+              placeholder="VD: 63"
+              required
+            />
+            <span class="field-note">Resting Heart Rate (bpm).</span>
+          </label>
+
+          <label>
+            <span class="label-title"> Số lần giảm SpO2 (SpO2 Drop Events)</span>
+            <input
+              type="number"
+              min="0"
+              name="spo2_drop_events"
+              value="{{ default_input.spo2_drop_events }}"
+              placeholder="VD: 3"
+              required
+            />
+            <span class="field-note">Số lần nồng độ oxy giảm đột ngột.</span>
+          </label>
+
+          <!-- Nhóm: Tiền sử & Chỉ số lâm sàng -->
+          <div style="grid-column: 1 / -1; margin-top: 16px; border-top: 1px solid var(--line); padding-top: 16px;">
+            <h3 style="color: var(--primary); font-size: 1.1rem;">Lối sống & Tiền sử bệnh (Lifestyle & Disease Risks)</h3>
+          </div>
+
+          <label>
+            <span class="label-title"> Hút thuốc (Smoker)</span>
+            <select name="smoker" required>
+              <option value="0" {% if default_input.smoker == 0 %}selected{% endif %}>Không (No)</option>
+              <option value="1" {% if default_input.smoker == 1 %}selected{% endif %}>Có (Yes)</option>
+            </select>
+            <span class="field-note">Có hút thuốc thường xuyên không.</span>
+          </label>
+
+          <label>
+            <span class="label-title"> Tiền sử đột quỵ (Stroke History)</span>
+            <select name="stroke_history" required>
+              <option value="0" {% if default_input.stroke_history == 0 %}selected{% endif %}>Không (No)</option>
+              <option value="1" {% if default_input.stroke_history == 1 %}selected{% endif %}>Có (Yes)</option>
+            </select>
+            <span class="field-note">Có tiền sử đột quỵ hay tai biến mạch máu não.</span>
+          </label>
+
+          <label>
+            <span class="label-title"> Tiền sử gia đình bị Alzheimer</span>
+            <select name="family_history_alzheimer" required>
+              <option value="0" {% if default_input.family_history_alzheimer == 0 %}selected{% endif %}>Không (No)</option>
+              <option value="1" {% if default_input.family_history_alzheimer == 1 %}selected{% endif %}>Có (Yes)</option>
+            </select>
+            <span class="field-note">Có người thân trực hệ bị bệnh Alzheimer.</span>
+          </label>
+
+          <label>
+            <span class="label-title"> Điểm kiểm tra nhận thức (Cognitive Score)</span>
+            <input
+              type="number"
+              step="0.1"
+              min="0"
+              max="30"
+              name="cognitive_score"
+              value="{{ default_input.cognitive_score }}"
+              placeholder="Thang điểm 0-30"
+              required
+            />
+            <span class="field-note">Kết quả bài test nhận thức (0-30).</span>
+          </label>
+
+          <label>
+            <span class="label-title"> Điểm kiểm tra trí nhớ (Memory Test Score)</span>
+            <input
+              type="number"
+              step="0.1"
+              min="0"
+              max="10"
+              name="memory_test_score"
+              value="{{ default_input.memory_test_score }}"
+              placeholder="Thang điểm 0-10"
+              required
+            />
+            <span class="field-note">Kết quả bài test trí nhớ ngắn hạn (0-10).</span>
+          </label>
         </div>
 
         <div class="button-row">

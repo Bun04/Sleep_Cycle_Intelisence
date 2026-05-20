@@ -95,10 +95,10 @@ def _map_row_to_model_features(row, model_data):
     if model_data is None:
         return None
 
-    row_lower = {k.strip().lower(): v for k, v in row.items()}
+    row_lower = {k.strip().lower().replace('_', ' ').replace('-', ' '): v for k, v in row.items()}
 
     age = None
-    for key in ['age', 'tuổi', 'age_years', 'năm']:
+    for key in ['age', 'tuổi', 'age years', 'năm']:
         if key in row_lower:
             age = _to_float(row_lower[key], None)
             break
@@ -110,7 +110,7 @@ def _map_row_to_model_features(row, model_data):
             break
 
     bmi_value = None
-    for key in ['bmi category', 'bmi', 'bmi_category']:
+    for key in ['bmi category', 'bmi']:
         if key in row_lower:
             bmi_value = str(row_lower[key]).strip()
             break
@@ -118,13 +118,13 @@ def _map_row_to_model_features(row, model_data):
     systolic, diastolic = _parse_blood_pressure(row_lower)
 
     stress = None
-    for key in ['stress level', 'stress', 'stress_score', 'stresslevel']:
+    for key in ['stress level', 'stress', 'stress score', 'stresslevel']:
         if key in row_lower:
             stress = _to_float(row_lower[key], None)
             break
 
     activity = None
-    for key in ['physical activity level', 'physical activity', 'activity level', 'physical_activity_level', 'physicalactivitylevel']:
+    for key in ['physical activity level', 'physical activity', 'activity level', 'physicalactivitylevel']:
         if key in row_lower:
             activity = _to_float(row_lower[key], None)
             break
@@ -136,10 +136,13 @@ def _map_row_to_model_features(row, model_data):
             break
 
     deep_sleep = None
-    for key in ['deep sleep', 'deep_sleep', 'deep_sleep_percentage', 'n3', 'phút ngủ sâu', 'deep sleep percentage']:
+    for key in ['deep sleep', 'deep sleep percentage', 'deep sleep minutes', 'n3', 'phút ngủ sâu']:
         if key in row_lower:
             deep_sleep = _to_float(row_lower[key], None)
             break
+
+    if deep_sleep is not None and deep_sleep < 1.0:
+        deep_sleep = deep_sleep * 100
 
     if age is None or stress is None or activity is None or heart_rate is None or systolic is None or diastolic is None:
         return None
@@ -165,7 +168,7 @@ def _map_row_to_model_features(row, model_data):
             break
 
     stroke = 0
-    for key in ['stroke', 'tai biến', 'stroke_history', 'stroke history']:
+    for key in ['stroke', 'tai biến', 'stroke history']:
         if key in row_lower:
             val = str(row_lower[key]).strip().lower()
             if val in ['yes', 'y', '1', 'true', 'có', 'bị']:
@@ -175,19 +178,36 @@ def _map_row_to_model_features(row, model_data):
             else:
                 stroke = _to_int(row_lower[key], 0)
             break
-        
-        
-    # history_family_alzheimer = 0
-    # for key in ['family_alzheimer','Người nhà bệnh','family_history_alzheimer']:
-    #     if key in row_lower:
-    #         val = str(row_lower[key]).strip().lower()
-    #         if val in ['yes','y','1','có', 'bị','tre']:
-    #               history_family_alzheimer = 1
-    #         elif val in ['no', 'n', '0', 'false', 'không']:
-    #               history_family_alzheimer = 0
-    #         else:
-    #             history_family_alzheimer = _to_int(row_lower[key],0)
-    #         break
+
+    family_history_alzheimer = 0
+    for key in ['family history alzheimer', 'family alzheimer', 'Người nhà bệnh', 'tiền sử gia đình alzheimer', 'tiền sử alzheimer']:
+        if key in row_lower:
+            val = str(row_lower[key]).strip().lower()
+            if val in ['yes', 'y', '1', 'true', 'có', 'bị']:
+                family_history_alzheimer = 1
+            elif val in ['no', 'n', '0', 'false', 'không']:
+                family_history_alzheimer = 0
+            else:
+                family_history_alzheimer = _to_int(row_lower[key], 0)
+            break
+
+    cognitive_score = 25.0
+    for key in ['cognitive score', 'điểm nhận thức']:
+        if key in row_lower:
+            cognitive_score = _to_float(row_lower[key], 25.0)
+            break
+
+    memory_test_score = 7.0
+    for key in ['memory test score', 'điểm kiểm tra trí nhớ']:
+        if key in row_lower:
+            memory_test_score = _to_float(row_lower[key], 7.0)
+            break
+
+    quality_of_sleep = 7.0
+    for key in ['quality of sleep', 'sleep quality', 'quality', 'điểm chất lượng']:
+        if key in row_lower:
+            quality_of_sleep = _to_float(row_lower[key], 7.0)
+            break
 
     return {
         'Age': age,
@@ -198,9 +218,13 @@ def _map_row_to_model_features(row, model_data):
         'Stress Level': stress,
         'Physical Activity Level': activity,
         'Heart Rate': heart_rate,
-        'Deep_Sleep': deep_sleep if deep_sleep is not None else 0.0,
+        'Deep_Sleep': deep_sleep if deep_sleep is not None else 15.0,
         'Smoker': smoker,
         'Stroke': stroke,
+        'Family_History_Alzheimer': family_history_alzheimer,
+        'Cognitive_Score': cognitive_score,
+        'Memory_Test_Score': memory_test_score,
+        'Quality of Sleep': quality_of_sleep,
     }
 
 

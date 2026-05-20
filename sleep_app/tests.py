@@ -25,7 +25,7 @@ class UploadViewTests(TestCase):
         response = self.client.post(reverse("upload_page"), {"sleep_data_file": upload})
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Dữ liệu CSV đã sẵn sàng để phân tích.")
+        self.assertContains(response, "Dữ liệu sẵn sàng phân tích")
         self.assertContains(response, "<table", html=False)
         self.assertContains(response, 'name="sleep_hours" value="7.4"', html=False)
         self.assertContains(response, 'name="user_name" value="Lan"', html=False)
@@ -37,5 +37,35 @@ class UploadViewTests(TestCase):
         response = self.client.post(reverse("upload_page"), {"sleep_data_file": upload})
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Upload chưa thành công.")
-        self.assertContains(response, "Có lỗi khi đọc file")
+        self.assertContains(response, "Upload chưa thành công")
+        self.assertContains(response, "Lỗi xử lý file")
+
+    def test_dashboard_view_displays_charts_and_history(self):
+        from sleep_app.models import SleepRecord
+        record = SleepRecord.objects.create(
+            user_name="Lan",
+            sleep_hours=7.4,
+            deep_sleep_minutes=95,
+            rem_sleep_minutes=110,
+            awakenings=2,
+            spo2_drop_events=1,
+            hrv=56,
+            rhr=58,
+            consecutive_days=3,
+            target_sleep_hours=8.0,
+            wake_time="06:15",
+            quality_label="Tốt",
+            quality_tone="good",
+            recovery_score=85,
+            algorithm_used="KNN"
+        )
+        
+        response = self.client.get(reverse("dashboard_page"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Báo cáo của Lan")
+        self.assertContains(response, "Lan")
+        self.assertContains(response, "7.4 giờ")
+        
+        response_id = self.client.get(reverse("dashboard_page") + f"?id={record.id}")
+        self.assertEqual(response_id.status_code, 200)
+        self.assertContains(response_id, "Báo cáo của Lan")

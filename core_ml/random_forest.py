@@ -78,12 +78,12 @@ def load_and_process_csv(filename):
                 ) == 'Yes' else 0
 
                 # Alzheimer: đọc nhãn thật từ dataset
-                # (cột Alzheimer_Risk được sinh sẵn trong CSV)
+             
                 alzheimer_label = safe_int(
                     row.get('Alzheimer_Risk', 0)
                 )
 
-                # 3 cột mới cho Alzheimer
+                # cột mới cho Alzheimer
                 family_history = 1 if row.get(
                     'Family_History_Alzheimer', 'No'
                 ) == 'Yes' else 0
